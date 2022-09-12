@@ -30,6 +30,7 @@ pub struct EVMImpl<'a, GSPEC: Spec, DB: Database, const INSPECT: bool> {
     precompiles: Precompiles,
     inspector: &'a mut dyn Inspector<DB>,
     _phantomdata: PhantomData<GSPEC>,
+    temp_storage: Map<(H160, U256), U256>,
 }
 
 pub trait Transact {
@@ -48,7 +49,7 @@ impl<'a, GSPEC: Spec, DB: Database, const INSPECT: bool> Transact
         let gas_limit = self.data.env.tx.gas_limit;
         let exit = |reason: Return| (ExecutionResult::new_with_reason(reason), State::new());
 
-        if GSPEC::enabled(LONDON) {
+        if SpecId::LONDON.enabled_in(GSPEC::SPEC_ID as u8) {
             if let Some(priority_fee) = self.data.env.tx.gas_priority_fee {
                 if priority_fee > self.data.env.tx.gas_price {
                     // or gas_max_fee for eip1559
@@ -150,8 +151,9 @@ impl<'a, GSPEC: Spec, DB: Database, const INSPECT: bool> Transact
                     input: data,
                     gas_limit,
                     context,
+                    is_static: false,
                 };
-                let (exit, gas, bytes) = self.call_inner::<GSPEC>(&mut call_input);
+                let (exit, gas, bytes) = self.call_inner(&mut call_input);
                 (exit, gas, TransactOut::Call(bytes))
             }
             TransactTo::Create(scheme) => {
@@ -162,7 +164,7 @@ impl<'a, GSPEC: Spec, DB: Database, const INSPECT: bool> Transact
                     init_code: data,
                     gas_limit,
                 };
-                let (exit, address, ret_gas, bytes) = self.create_inner::<GSPEC>(&mut create_input);
+                let (exit, address, ret_gas, bytes) = self.create_inner(&mut create_input);
                 (exit, ret_gas, TransactOut::Create(bytes, address))
             }
         };
@@ -216,6 +218,7 @@ impl<'a, GSPEC: Spec, DB: Database, const INSPECT: bool> EVMImpl<'a, GSPEC, DB, 
             precompiles,
             inspector,
             _phantomdata: PhantomData {},
+            temp_storage: Map::new(),
         }
     }
 
@@ -228,7 +231,7 @@ impl<'a, GSPEC: Spec, DB: Database, const INSPECT: bool> EVMImpl<'a, GSPEC, DB, 
         let (gas_used, gas_refunded) = if crate::USE_GAS {
             let effective_gas_price = self.data.env.effective_gas_price();
             let basefee = self.data.env.block.basefee;
-            let max_refund_quotient = if SPEC::enabled(LONDON) { 5 } else { 2 }; // EIP-3529: Reduction in refunds
+            let max_refund_quotient = if SpecId::LONDON.enabled_in(GSPEC::SPEC_ID as u8) { 5 } else { 2 }; // EIP-3529: Reduction in refunds
 
             let gas_refunded = min(gas.refunded() as u64, gas.spend() / max_refund_quotient);
             let acc_caller = self.data.journaled_state.state().get_mut(&caller).unwrap();
@@ -238,7 +241,7 @@ impl<'a, GSPEC: Spec, DB: Database, const INSPECT: bool> EVMImpl<'a, GSPEC, DB, 
                 .saturating_add(effective_gas_price * (gas.remaining() + gas_refunded));
 
             // EIP-1559
-            let coinbase_gas_price = if SPEC::enabled(LONDON) {
+            let coinbase_gas_price = if SpecId::LONDON.enabled_in(GSPEC::SPEC_ID as u8) {
                 effective_gas_price.saturating_sub(basefee)
             } else {
                 effective_gas_price
@@ -302,7 +305,7 @@ impl<'a, GSPEC: Spec, DB: Database, const INSPECT: bool> EVMImpl<'a, GSPEC, DB, 
             let zero_data_len = input.iter().filter(|v| **v == 0).count() as u64;
             let non_zero_data_len = (input.len() as u64 - zero_data_len) as u64;
             let (accessed_accounts, accessed_slots) = {
-                if SPEC::enabled(BERLIN) {
+                if SpecId::BERLIN.enabled_in(GSPEC::SPEC_ID as u8) {
                     let mut accessed_slots = 0_u64;
 
                     for (address, slots) in self.data.env.tx.access_list.iter() {
@@ -327,7 +330,7 @@ impl<'a, GSPEC: Spec, DB: Database, const INSPECT: bool> EVMImpl<'a, GSPEC, DB, 
             };
 
             let transact = if is_create {
-                if SPEC::enabled(HOMESTEAD) {
+                if SpecId::HOMESTEAD.enabled_in(GSPEC::SPEC_ID as u8) {
                     // EIP-2: Homestead Hard-fork Changes
                     53000
                 } else {
@@ -338,7 +341,7 @@ impl<'a, GSPEC: Spec, DB: Database, const INSPECT: bool> EVMImpl<'a, GSPEC, DB, 
             };
 
             // EIP-2028: Transaction data gas cost reduction
-            let gas_transaction_non_zero_data = if SPEC::enabled(ISTANBUL) { 16 } else { 68 };
+            let gas_transaction_non_zero_data = if SpecId::ISTANBUL.enabled_in(GSPEC::SPEC_ID as u8) { 16 } else { 68 };
 
             transact
                 + zero_data_len * gas::TRANSACTION_ZERO_DATA
@@ -350,10 +353,7 @@ impl<'a, GSPEC: Spec, DB: Database, const INSPECT: bool> EVMImpl<'a, GSPEC, DB, 
         }
     }
 
-    fn create_inner<SPEC: Spec>(
-        &mut self,
-        inputs: &mut CreateInputs,
-    ) -> (Return, Option<H160>, Gas, Bytes) {
+    fn create_inner(&mut self, inputs: &mut CreateInputs) -> (Return, Option<H160>, Gas, Bytes) {
         // Call inspector
         if INSPECT {
             let (ret, address, gas, out) = self.inspector.create(&mut self.data, inputs);
@@ -429,7 +429,7 @@ impl<'a, GSPEC: Spec, DB: Database, const INSPECT: bool> EVMImpl<'a, GSPEC, DB, 
         }
 
         // EIP-161: State trie clearing (invariant-preserving alternative)
-        if SPEC::enabled(SPURIOUS_DRAGON)
+        if SpecId::SPURIOUS_DRAGON.enabled_in(GSPEC::SPEC_ID as u8)
             && self
                 .data
                 .journaled_state
@@ -442,7 +442,7 @@ impl<'a, GSPEC: Spec, DB: Database, const INSPECT: bool> EVMImpl<'a, GSPEC, DB, 
         }
 
         // Create new interpreter and execute initcode
-        let contract = Contract::new::<SPEC>(
+        let contract = Contract::new::<GSPEC>(
             Bytes::new(),
             Bytecode::new_raw(inputs.init_code.clone()),
             created_address,
@@ -451,20 +451,20 @@ impl<'a, GSPEC: Spec, DB: Database, const INSPECT: bool> EVMImpl<'a, GSPEC, DB, 
         );
 
         #[cfg(feature = "memory_limit")]
-        let mut interp = Interpreter::new_with_memory_limit::<SPEC>(
+        let mut interp = Interpreter::new_with_memory_limit::<GSPEC>(
             contract,
             gas.limit(),
             self.data.env.cfg.memory_limit,
         );
 
         #[cfg(not(feature = "memory_limit"))]
-        let mut interp = Interpreter::new::<SPEC>(contract, gas.limit());
+        let mut interp = Interpreter::new(contract, gas.limit(), false);
 
-        if Self::INSPECT {
+        if INSPECT {
             self.inspector
-                .initialize_interp(&mut interp, &mut self.data, SPEC::IS_STATIC_CALL);
+                .initialize_interp(&mut interp, &mut self.data, false);
         }
-        let exit_reason = interp.run::<Self, SPEC>(self);
+        let exit_reason = interp.run::<Self, GSPEC>(self, INSPECT);
 
         // Host error if present on execution\
         let (ret, address, gas, out) = match exit_reason {
@@ -474,14 +474,14 @@ impl<'a, GSPEC: Spec, DB: Database, const INSPECT: bool> EVMImpl<'a, GSPEC, DB, 
                 let mut bytes = interp.return_value();
 
                 // EIP-3541: Reject new contract code starting with the 0xEF byte
-                if SPEC::enabled(LONDON) && !bytes.is_empty() && bytes.first() == Some(&0xEF) {
+                if SpecId::LONDON.enabled_in(GSPEC::SPEC_ID as u8) && !bytes.is_empty() && bytes.first() == Some(&0xEF) {
                     self.data.journaled_state.checkpoint_revert(checkpoint);
                     return (Return::CreateContractWithEF, ret, interp.gas, b);
                 }
 
                 // EIP-170: Contract code size limit
                 // By default limit is 0x6000 (~25kb)
-                if SPEC::enabled(SPURIOUS_DRAGON)
+                if SpecId::SPURIOUS_DRAGON.enabled_in(GSPEC::SPEC_ID as u8)
                     && bytes.len() > self.data.env.cfg.limit_contract_code_size.unwrap_or(0x6000)
                 {
                     self.data.journaled_state.checkpoint_revert(checkpoint);
@@ -494,7 +494,7 @@ impl<'a, GSPEC: Spec, DB: Database, const INSPECT: bool> EVMImpl<'a, GSPEC, DB, 
                         // EIP-2 point 3: If contract creation does not have enough gas to pay for the
                         // final gas fee for adding the contract code to the state, the contract
                         //  creation fails (i.e. goes out-of-gas) rather than leaving an empty contract.
-                        if SPEC::enabled(HOMESTEAD) {
+                        if SpecId::HOMESTEAD.enabled_in(GSPEC::SPEC_ID as u8) {
                             self.data.journaled_state.checkpoint_revert(checkpoint);
                             return (Return::OutOfGas, ret, interp.gas, b);
                         } else {
@@ -508,7 +508,7 @@ impl<'a, GSPEC: Spec, DB: Database, const INSPECT: bool> EVMImpl<'a, GSPEC, DB, 
                 let bytecode = match self.data.env.cfg.perf_analyse_created_bytecodes {
                     AnalysisKind::Raw => Bytecode::new_raw(bytes),
                     AnalysisKind::Check => Bytecode::new_raw(bytes).to_checked(),
-                    AnalysisKind::Analyse => Bytecode::new_raw(bytes).to_analysed::<SPEC>(),
+                    AnalysisKind::Analyse => Bytecode::new_raw(bytes).to_analysed::<GSPEC>(),
                 };
 
                 self.data
@@ -530,12 +530,12 @@ impl<'a, GSPEC: Spec, DB: Database, const INSPECT: bool> EVMImpl<'a, GSPEC, DB, 
         }
     }
 
-    fn call_inner<SPEC: Spec>(&mut self, inputs: &mut CallInputs) -> (Return, Gas, Bytes) {
+    fn call_inner(&mut self, inputs: &mut CallInputs) -> (Return, Gas, Bytes) {
         // Call the inspector
         if INSPECT {
             let (ret, gas, out) = self
                 .inspector
-                .call(&mut self.data, inputs, SPEC::IS_STATIC_CALL);
+                .call(&mut self.data, inputs, inputs.is_static);
             if ret != Return::Continue {
                 return self.inspector.call_end(
                     &mut self.data,
@@ -543,7 +543,7 @@ impl<'a, GSPEC: Spec, DB: Database, const INSPECT: bool> EVMImpl<'a, GSPEC, DB, 
                     gas,
                     ret,
                     out,
-                    SPEC::IS_STATIC_CALL,
+                    inputs.is_static,
                 );
             }
         }
@@ -559,14 +559,14 @@ impl<'a, GSPEC: Spec, DB: Database, const INSPECT: bool> EVMImpl<'a, GSPEC, DB, 
         // Check depth
         if self.data.journaled_state.depth() > interpreter::CALL_STACK_LIMIT {
             let (ret, gas, out) = (Return::CallTooDeep, gas, Bytes::new());
-            if Self::INSPECT {
+            if INSPECT {
                 return self.inspector.call_end(
                     &mut self.data,
                     inputs,
                     gas,
                     ret,
                     out,
-                    SPEC::IS_STATIC_CALL,
+                    inputs.is_static,
                 );
             } else {
                 return (ret, gas, out);
@@ -591,14 +591,14 @@ impl<'a, GSPEC: Spec, DB: Database, const INSPECT: bool> EVMImpl<'a, GSPEC, DB, 
         ) {
             self.data.journaled_state.checkpoint_revert(checkpoint);
             let (ret, gas, out) = (e, gas, Bytes::new());
-            if Self::INSPECT {
+            if INSPECT {
                 return self.inspector.call_end(
                     &mut self.data,
                     inputs,
                     gas,
                     ret,
                     out,
-                    SPEC::IS_STATIC_CALL,
+                    inputs.is_static,
                 );
             } else {
                 return (ret, gas, out);
@@ -635,25 +635,28 @@ impl<'a, GSPEC: Spec, DB: Database, const INSPECT: bool> EVMImpl<'a, GSPEC, DB, 
             }
         } else {
             // Create interpreter and execute subcall
-            let contract =
-                Contract::new_with_context::<SPEC>(inputs.input.clone(), bytecode, &inputs.context);
+            let contract = Contract::new_with_context::<GSPEC>(
+                inputs.input.clone(),
+                bytecode,
+                &inputs.context,
+            );
 
             #[cfg(feature = "memory_limit")]
-            let mut interp = Interpreter::new_with_memory_limit::<SPEC>(
+            let mut interp = Interpreter::new_with_memory_limit::<GSPEC>(
                 contract,
                 gas.limit(),
                 self.data.env.cfg.memory_limit,
             );
 
             #[cfg(not(feature = "memory_limit"))]
-            let mut interp = Interpreter::new::<SPEC>(contract, gas.limit());
+            let mut interp = Interpreter::new(contract, gas.limit(), inputs.is_static);
 
-            if Self::INSPECT {
+            if INSPECT {
                 // create is always no static call.
                 self.inspector
                     .initialize_interp(&mut interp, &mut self.data, false);
             }
-            let exit_reason = interp.run::<Self, SPEC>(self);
+            let exit_reason = interp.run::<Self, GSPEC>(self, INSPECT);
             if matches!(exit_reason, return_ok!()) {
                 self.data.journaled_state.checkpoint_commit();
             } else {
@@ -665,7 +668,7 @@ impl<'a, GSPEC: Spec, DB: Database, const INSPECT: bool> EVMImpl<'a, GSPEC, DB, 
 
         if INSPECT {
             self.inspector
-                .call_end(&mut self.data, inputs, gas, ret, out, SPEC::IS_STATIC_CALL)
+                .call_end(&mut self.data, inputs, gas, ret, out, inputs.is_static)
         } else {
             (ret, gas, out)
         }
@@ -675,16 +678,14 @@ impl<'a, GSPEC: Spec, DB: Database, const INSPECT: bool> EVMImpl<'a, GSPEC, DB, 
 impl<'a, GSPEC: Spec, DB: Database + 'a, const INSPECT: bool> Host
     for EVMImpl<'a, GSPEC, DB, INSPECT>
 {
-    const INSPECT: bool = INSPECT;
-    type DB = DB;
-
-    fn step(&mut self, interp: &mut Interpreter, is_static: bool) -> Return {
-        self.inspector.step(interp, &mut self.data, is_static)
+    fn step(&mut self, interp: &mut Interpreter) -> Return {
+        self.inspector
+            .step(interp, &mut self.data, interp.is_static)
     }
 
-    fn step_end(&mut self, interp: &mut Interpreter, is_static: bool, ret: Return) -> Return {
+    fn step_end(&mut self, interp: &mut Interpreter, ret: Return) -> Return {
         self.inspector
-            .step_end(interp, &mut self.data, is_static, ret)
+            .step_end(interp, &mut self.data, interp.is_static, ret)
     }
 
     fn env(&mut self) -> &mut Env {
@@ -754,12 +755,19 @@ impl<'a, GSPEC: Spec, DB: Database + 'a, const INSPECT: bool> Host
     }
 
     fn sload(&mut self, address: H160, index: U256) -> Option<(U256, bool)> {
+        Some((
+            self.temp_storage
+                .entry((address, index))
+                .or_insert(U256::zero())
+                .clone(),
+            true,
+        ))
         // account is always hot. reference on that statement https://eips.ethereum.org/EIPS/eip-2929 see `Note 2:`
-        self.data
-            .journaled_state
-            .sload(address, index, self.data.db)
-            .map_err(|e| self.data.error = Some(e))
-            .ok()
+        // self.data
+        //     .journaled_state
+        //     .sload(address, index, self.data.db)
+        //     .map_err(|e| self.data.error = Some(e))
+        //     .ok()
     }
 
     fn sstore(
@@ -768,11 +776,14 @@ impl<'a, GSPEC: Spec, DB: Database + 'a, const INSPECT: bool> Host
         index: U256,
         value: U256,
     ) -> Option<(U256, U256, U256, bool)> {
-        self.data
-            .journaled_state
-            .sstore(address, index, value, self.data.db)
-            .map_err(|e| self.data.error = Some(e))
-            .ok()
+        self.temp_storage.insert((address, index), value);
+        Some((U256::zero(), U256::zero(), U256::zero(), false))
+
+        // self.data
+        //     .journaled_state
+        //     .sstore(address, index, value, self.data.db)
+        //     .map_err(|e| self.data.error = Some(e))
+        //     .ok()
     }
 
     fn log(&mut self, address: H160, topics: Vec<H256>, data: Bytes) {
@@ -798,15 +809,12 @@ impl<'a, GSPEC: Spec, DB: Database + 'a, const INSPECT: bool> Host
             .ok()
     }
 
-    fn create<SPEC: Spec>(
-        &mut self,
-        inputs: &mut CreateInputs,
-    ) -> (Return, Option<H160>, Gas, Bytes) {
-        self.create_inner::<SPEC>(inputs)
+    fn create(&mut self, inputs: &mut CreateInputs) -> (Return, Option<H160>, Gas, Bytes) {
+        self.create_inner(inputs)
     }
 
-    fn call<SPEC: Spec>(&mut self, inputs: &mut CallInputs) -> (Return, Gas, Bytes) {
-        self.call_inner::<SPEC>(inputs)
+    fn call(&mut self, inputs: &mut CallInputs) -> (Return, Gas, Bytes) {
+        self.call_inner(inputs)
     }
 }
 
@@ -835,12 +843,8 @@ pub fn create2_address(caller: H160, code_hash: H256, salt: U256) -> H160 {
 
 /// EVM context host.
 pub trait Host {
-    const INSPECT: bool;
-
-    type DB: Database;
-
-    fn step(&mut self, interp: &mut Interpreter, is_static: bool) -> Return;
-    fn step_end(&mut self, interp: &mut Interpreter, is_static: bool, ret: Return) -> Return;
+    fn step(&mut self, interp: &mut Interpreter) -> Return;
+    fn step_end(&mut self, interp: &mut Interpreter, ret: Return) -> Return;
 
     fn env(&mut self) -> &mut Env;
 
@@ -868,10 +872,7 @@ pub trait Host {
     /// Mark an address to be deleted, with funds transferred to target.
     fn selfdestruct(&mut self, address: H160, target: H160) -> Option<SelfDestructResult>;
     /// Invoke a create operation.
-    fn create<SPEC: Spec>(
-        &mut self,
-        inputs: &mut CreateInputs,
-    ) -> (Return, Option<H160>, Gas, Bytes);
+    fn create(&mut self, inputs: &mut CreateInputs) -> (Return, Option<H160>, Gas, Bytes);
     /// Invoke a call operation.
-    fn call<SPEC: Spec>(&mut self, input: &mut CallInputs) -> (Return, Gas, Bytes);
+    fn call(&mut self, input: &mut CallInputs) -> (Return, Gas, Bytes);
 }

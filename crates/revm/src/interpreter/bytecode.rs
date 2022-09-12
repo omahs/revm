@@ -197,7 +197,7 @@ impl Bytecode {
 
     /// Analyze bytecode to get jumptable and gas blocks.
     fn analyze<SPEC: Spec>(code: &[u8]) -> ValidJumpAddress {
-        let opcode_gas = spec_opcode_gas(SPEC::SPEC_ID);
+        let opcode_gas = spec_opcode_gas(SPEC::SPEC_ID, SPEC::SPEC_ID_U8,false);
 
         let mut analysis = ValidJumpAddress {
             first_gas_block: 0,

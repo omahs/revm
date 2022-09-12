@@ -33,6 +33,10 @@ pub struct Interpreter {
     pub return_data_buffer: Bytes,
     /// Return value.
     pub return_range: Range<usize>,
+    /// Is static call
+    pub is_static: bool,
+    /// Host
+    //pub host: Option<Box<dyn Host>>,
     /// Memory limit. See [`crate::CfgEnv`].
     #[cfg(feature = "memory_limit")]
     pub memory_limit: u64,
@@ -43,7 +47,7 @@ impl Interpreter {
         unsafe { *self.instruction_pointer }
     }
     #[cfg(not(feature = "memory_limit"))]
-    pub fn new<SPEC: Spec>(contract: Contract, gas_limit: u64) -> Self {
+    pub fn new(contract: Contract, gas_limit: u64, is_static: bool) -> Self {
         Self {
             instruction_pointer: contract.bytecode.as_ptr(),
             return_range: Range::default(),
@@ -52,14 +56,16 @@ impl Interpreter {
             return_data_buffer: Bytes::new(),
             contract,
             gas: Gas::new(gas_limit),
+            is_static,
         }
     }
 
     #[cfg(feature = "memory_limit")]
-    pub fn new_with_memory_limit<SPEC: Spec>(
+    pub fn new_with_memory_limit(
         contract: Contract,
         gas_limit: u64,
         memory_limit: u64,
+        is_static: bool,
     ) -> Self {
         Self {
             instruction_pointer: contract.bytecode.as_ptr(),
@@ -69,6 +75,7 @@ impl Interpreter {
             return_data_buffer: Bytes::new(),
             contract,
             gas: Gas::new(gas_limit),
+            is_static,
             memory_limit,
         }
     }
@@ -106,33 +113,38 @@ impl Interpreter {
     }
 
     /// loop steps until we are finished with execution
-    pub fn run<H: Host, SPEC: Spec>(&mut self, host: &mut H) -> Return {
+    pub fn run<H: Host, SPEC: Spec>(&mut self, host: &mut H, inspect: bool) -> Return {
         //let timer = std::time::Instant::now();
         let mut ret = Return::Continue;
         // add first gas_block
         if USE_GAS && !self.gas.record_cost(self.contract.first_gas_block()) {
             return Return::OutOfGas;
         }
-        while ret == Return::Continue {
-            // step
-            if H::INSPECT {
-                let ret = host.step(self, SPEC::IS_STATIC_CALL);
+        
+        if inspect {
+            while ret == Return::Continue {
+                // step
+                ret = host.step(self);
                 if ret != Return::Continue {
-                    return ret;
+                    break;
                 }
-            }
-            let opcode = unsafe { *self.instruction_pointer };
-            // Safety: In analysis we are doing padding of bytecode so that we are sure that last.
-            // byte instruction is STOP so we are safe to just increment program_counter bcs on last instruction
-            // it will do noop and just stop execution of this contract
-            self.instruction_pointer = unsafe { self.instruction_pointer.offset(1) };
-            ret = eval::<H, SPEC>(opcode, self, host);
+                let opcode = unsafe { *self.instruction_pointer };
+                // Safety: In analysis we are doing padding of bytecode so that we are sure that last.
+                // byte instruction is STOP so we are safe to just increment program_counter bcs on last instruction
+                // it will do noop and just stop execution of this contract
+                self.instruction_pointer = unsafe { self.instruction_pointer.offset(1) };
+                ret = eval::<H, SPEC>(opcode, self, host);
 
-            if H::INSPECT {
-                let ret = host.step_end(self, SPEC::IS_STATIC_CALL, ret);
-                if ret != Return::Continue {
-                    return ret;
-                }
+                ret = host.step_end(self, ret);
+            }
+        } else {
+            while ret == Return::Continue {
+                let opcode = unsafe { *self.instruction_pointer };
+                // Safety: In analysis we are doing padding of bytecode so that we are sure that last.
+                // byte instruction is STOP so we are safe to just increment program_counter bcs on last instruction
+                // it will do noop and just stop execution of this contract
+                self.instruction_pointer = unsafe { self.instruction_pointer.offset(1) };
+                ret = eval::<H, SPEC>(opcode, self, host);
             }
         }
         ret

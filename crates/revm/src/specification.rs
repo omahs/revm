@@ -1,11 +1,12 @@
-use core::convert::TryFrom;
-use num_enum::TryFromPrimitive;
 use revm_precompiles::SpecId as PrecompileId;
+
+
+pub const SPEC_ID_LONDON : u8 =16;
 
 /// SpecId and their activation block
 /// Information was obtained from: https://github.com/ethereum/execution-specs
 #[repr(u8)]
-#[derive(Debug, Copy, Clone, TryFromPrimitive, Eq, PartialEq, Hash, Ord, PartialOrd)]
+#[derive(Debug, Copy, Clone, Eq, PartialEq, Hash, Ord, PartialOrd)]
 #[cfg_attr(feature = "with-serde", derive(serde::Serialize, serde::Deserialize))]
 #[allow(non_camel_case_types)]
 pub enum SpecId {
@@ -41,7 +42,16 @@ impl SpecId {
     }
 
     pub fn try_from_u8(spec_id: u8) -> Option<Self> {
-        Self::try_from(spec_id).ok()
+        if spec_id > Self::LATEST as u8 {
+            None
+        } else {
+            Some(unsafe { core::mem::transmute(spec_id) })
+        }
+    }
+
+    #[inline]
+    pub const fn enabled_in(self, spec_id: u8) -> bool {
+        spec_id >= self as u8
     }
 }
 
@@ -67,13 +77,6 @@ impl From<&str> for SpecId {
     }
 }
 
-impl SpecId {
-    #[inline]
-    pub const fn enabled(our: SpecId, other: SpecId) -> bool {
-        our as u8 >= other as u8
-    }
-}
-
 pub(crate) trait NotStaticSpec {}
 
 pub trait Spec: Sized {
@@ -85,6 +88,8 @@ pub trait Spec: Sized {
         Self::SPEC_ID as u8 >= spec_id as u8
     }
     const SPEC_ID: SpecId;
+
+    const SPEC_ID_U8: u8;
     /// static flag used in STATIC type;
     const IS_STATIC_CALL: bool;
 
@@ -118,6 +123,8 @@ pub(crate) mod spec_impl {
 
                     //specification id
                     const SPEC_ID: SpecId = SpecId::$spec_id;
+
+                    const SPEC_ID_U8: u8 = SpecId::$spec_id as u8;
 
                     const IS_STATIC_CALL: bool = IS_STATIC_CALL;
 

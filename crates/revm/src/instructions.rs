@@ -13,7 +13,7 @@ mod system;
 
 pub use opcode::{OpCode, OPCODE_JUMPMAP};
 
-use crate::{interpreter::Interpreter, CallScheme, Host, Spec, SpecId::*};
+use crate::{interpreter::Interpreter, CallScheme, Host, Spec, SpecId::*, SPEC_ID_LONDON};
 use core::ops::{BitAnd, BitOr, BitXor};
 use primitive_types::U256;
 
@@ -77,62 +77,62 @@ pub enum Return {
 #[inline(always)]
 pub fn eval<H: Host, S: Spec>(opcode: u8, interp: &mut Interpreter, host: &mut H) -> Return {
     match opcode {
-        /*12_u8..=15_u8 => Return::OpcodeNotFound,
-        30_u8..=31_u8 => Return::OpcodeNotFound,
-        33_u8..=47_u8 => Return::OpcodeNotFound,
-        73_u8..=79_u8 => Return::OpcodeNotFound,
-        92_u8..=95_u8 => Return::OpcodeNotFound,
-        165_u8..=239_u8 => Return::OpcodeNotFound,
-        246_u8..=249_u8 => Return::OpcodeNotFound,
-        251_u8..=252_u8 => Return::OpcodeNotFound,*/
+        // 12_u8..=15_u8 => Return::OpcodeNotFound,
+        // 30_u8..=31_u8 => Return::OpcodeNotFound,
+        // 33_u8..=47_u8 => Return::OpcodeNotFound,
+        // 73_u8..=79_u8 => Return::OpcodeNotFound,
+        // 92_u8..=95_u8 => Return::OpcodeNotFound,
+        // 165_u8..=239_u8 => Return::OpcodeNotFound,
+        // 246_u8..=249_u8 => Return::OpcodeNotFound,
+        // 251_u8..=252_u8 => Return::OpcodeNotFound,
         opcode::STOP => Return::Stop,
-        opcode::ADD => op2_u256_tuple!(interp, overflowing_add),
-        opcode::MUL => op2_u256_tuple!(interp, overflowing_mul),
-        opcode::SUB => op2_u256_tuple!(interp, overflowing_sub),
-        opcode::DIV => op2_u256_fn!(interp, arithmetic::div),
-        opcode::SDIV => op2_u256_fn!(interp, arithmetic::sdiv),
-        opcode::MOD => op2_u256_fn!(interp, arithmetic::rem),
-        opcode::SMOD => op2_u256_fn!(interp, arithmetic::smod),
-        opcode::ADDMOD => op3_u256_fn!(interp, arithmetic::addmod),
-        opcode::MULMOD => op3_u256_fn!(interp, arithmetic::mulmod),
-        opcode::EXP => arithmetic::eval_exp::<S>(interp),
-        opcode::SIGNEXTEND => op2_u256_fn!(interp, arithmetic::signextend),
-        opcode::LT => op2_u256_bool_ref!(interp, lt),
-        opcode::GT => op2_u256_bool_ref!(interp, gt),
-        opcode::SLT => op2_u256_fn!(interp, bitwise::slt),
-        opcode::SGT => op2_u256_fn!(interp, bitwise::sgt),
-        opcode::EQ => op2_u256_bool_ref!(interp, eq),
-        opcode::ISZERO => op1_u256_fn!(interp, bitwise::iszero),
-        opcode::AND => op2_u256!(interp, bitand),
-        opcode::OR => op2_u256!(interp, bitor),
-        opcode::XOR => op2_u256!(interp, bitxor),
-        opcode::NOT => op1_u256_fn!(interp, bitwise::not),
-        opcode::BYTE => op2_u256_fn!(interp, bitwise::byte),
-        opcode::SHL => op2_u256_fn!(
-            interp,
-            bitwise::shl,
-            S::enabled(CONSTANTINOPLE) // EIP-145: Bitwise shifting instructions in EVM
-        ),
-        opcode::SHR => op2_u256_fn!(
-            interp,
-            bitwise::shr,
-            S::enabled(CONSTANTINOPLE) // EIP-145: Bitwise shifting instructions in EVM
-        ),
-        opcode::SAR => op2_u256_fn!(
-            interp,
-            bitwise::sar,
-            S::enabled(CONSTANTINOPLE) // EIP-145: Bitwise shifting instructions in EVM
-        ),
-        opcode::SHA3 => system::sha3(interp),
+        opcode::ADD => arithmetic::overflowing_add(interp,host),
+        opcode::MUL => arithmetic::overflowing_mul(interp,host),
+        opcode::SUB => arithmetic::overflowing_sub(interp,host),
+        opcode::DIV => arithmetic::div(interp,host),
+        opcode::SDIV => arithmetic::sdiv(interp,host),
+        opcode::MOD => arithmetic::rem(interp,host),
+        opcode::SMOD => arithmetic::smod(interp,host),
+        opcode::ADDMOD => arithmetic::addmod(interp,host),
+        opcode::MULMOD => arithmetic::mulmod(interp,host),
+        opcode::EXP => arithmetic::eval_exp::<SPEC_ID_LONDON>(interp,host),
+        opcode::SIGNEXTEND => arithmetic::signextend(interp,host),
+        //opcode::LT => op2_u256_bool_ref!(interp, lt),
+        //opcode::GT => op2_u256_bool_ref!(interp, gt),
+        //opcode::SLT => op2_u256_fn!(interp, bitwise::slt),
+        //opcode::SGT => op2_u256_fn!(interp, bitwise::sgt),
+        //opcode::EQ => op2_u256_bool_ref!(interp, eq),
+        //opcode::ISZERO => op1_u256_fn!(interp, bitwise::iszero),
+        //opcode::AND => op2_u256!(interp, bitand),
+        //opcode::OR => op2_u256!(interp, bitor),
+        // opcode::XOR => op2_u256!(interp, bitxor),
+        // opcode::NOT => op1_u256_fn!(interp, bitwise::not),
+        // opcode::BYTE => op2_u256_fn!(interp, bitwise::byte),
+        // opcode::SHL => op2_u256_fn!(
+        //     interp,
+        //     bitwise::shl,
+        //     S::enabled(CONSTANTINOPLE) // EIP-145: Bitwise shifting instructions in EVM
+        // ),
+        // opcode::SHR => op2_u256_fn!(
+        //     interp,
+        //     bitwise::shr,
+        //     S::enabled(CONSTANTINOPLE) // EIP-145: Bitwise shifting instructions in EVM
+        // ),
+        // opcode::SAR => op2_u256_fn!(
+        //     interp,
+        //     bitwise::sar,
+        //     S::enabled(CONSTANTINOPLE) // EIP-145: Bitwise shifting instructions in EVM
+        // ),
+        //opcode::SHA3 => system::sha3(interp),
 
-        opcode::ADDRESS => system::address(interp),
-        opcode::BALANCE => host::balance::<H, S>(interp, host),
-        opcode::SELFBALANCE => host::selfbalance::<H, S>(interp, host),
-        opcode::CODESIZE => system::codesize(interp),
-        opcode::CODECOPY => system::codecopy(interp),
-        opcode::CALLDATALOAD => system::calldataload(interp),
-        opcode::CALLDATASIZE => system::calldatasize(interp),
-        opcode::CALLDATACOPY => system::calldatacopy(interp),
+       // opcode::ADDRESS => system::address(interp),
+        // opcode::BALANCE => host::balance::<H, S>(interp, host),
+        // opcode::SELFBALANCE => host::selfbalance::<H, S>(interp, host),
+        // opcode::CODESIZE => system::codesize(interp),
+        // opcode::CODECOPY => system::codecopy(interp),
+        // opcode::CALLDATALOAD => system::calldataload(interp),
+        // opcode::CALLDATASIZE => system::calldatasize(interp),
+        // opcode::CALLDATACOPY => system::calldatacopy(interp),
         opcode::POP => stack::pop(interp),
         opcode::MLOAD => memory::mload(interp),
         opcode::MSTORE => memory::mstore(interp),
@@ -208,41 +208,41 @@ pub fn eval<H: Host, S: Spec>(opcode: u8, interp: &mut Interpreter, host: &mut H
         opcode::SWAP15 => stack::swap::<15>(interp),
         opcode::SWAP16 => stack::swap::<16>(interp),
 
-        opcode::RETURN => control::ret(interp),
-        opcode::REVERT => control::revert::<S>(interp),
-        opcode::INVALID => Return::InvalidOpcode,
-        opcode::BASEFEE => host_env::basefee::<H, S>(interp, host),
-        opcode::ORIGIN => host_env::origin(interp, host),
-        opcode::CALLER => system::caller(interp),
-        opcode::CALLVALUE => system::callvalue(interp),
-        opcode::GASPRICE => host_env::gasprice(interp, host),
-        opcode::EXTCODESIZE => host::extcodesize::<H, S>(interp, host),
-        opcode::EXTCODEHASH => host::extcodehash::<H, S>(interp, host),
-        opcode::EXTCODECOPY => host::extcodecopy::<H, S>(interp, host),
-        opcode::RETURNDATASIZE => system::returndatasize::<S>(interp),
-        opcode::RETURNDATACOPY => system::returndatacopy::<S>(interp),
-        opcode::BLOCKHASH => host::blockhash(interp, host),
-        opcode::COINBASE => host_env::coinbase(interp, host),
-        opcode::TIMESTAMP => host_env::timestamp(interp, host),
-        opcode::NUMBER => host_env::number(interp, host),
-        opcode::DIFFICULTY => host_env::difficulty(interp, host),
-        opcode::GASLIMIT => host_env::gaslimit(interp, host),
-        opcode::SLOAD => host::sload::<H, S>(interp, host),
-        opcode::SSTORE => host::sstore::<H, S>(interp, host),
-        opcode::GAS => system::gas(interp),
-        opcode::LOG0 => host::log::<H, S>(interp, 0, host),
-        opcode::LOG1 => host::log::<H, S>(interp, 1, host),
-        opcode::LOG2 => host::log::<H, S>(interp, 2, host),
-        opcode::LOG3 => host::log::<H, S>(interp, 3, host),
-        opcode::LOG4 => host::log::<H, S>(interp, 4, host),
-        opcode::SELFDESTRUCT => host::selfdestruct::<H, S>(interp, host),
-        opcode::CREATE => host::create::<H, S>(interp, false, host), //check
-        opcode::CREATE2 => host::create::<H, S>(interp, true, host), //check
-        opcode::CALL => host::call::<H, S>(interp, CallScheme::Call, host), //check
-        opcode::CALLCODE => host::call::<H, S>(interp, CallScheme::CallCode, host), //check
-        opcode::DELEGATECALL => host::call::<H, S>(interp, CallScheme::DelegateCall, host), //check
-        opcode::STATICCALL => host::call::<H, S>(interp, CallScheme::StaticCall, host), //check
-        opcode::CHAINID => host_env::chainid::<H, S>(interp, host),
+        // opcode::RETURN => control::ret(interp),
+        // opcode::REVERT => control::revert::<S>(interp),
+        // opcode::INVALID => Return::InvalidOpcode,
+        // opcode::BASEFEE => host_env::basefee::<H, S>(interp, host),
+        // opcode::ORIGIN => host_env::origin(interp, host),
+        // opcode::CALLER => system::caller(interp),
+        // opcode::CALLVALUE => system::callvalue(interp),
+        // opcode::GASPRICE => host_env::gasprice(interp, host),
+        // opcode::EXTCODESIZE => host::extcodesize::<H, S>(interp, host),
+        // opcode::EXTCODEHASH => host::extcodehash::<H, S>(interp, host),
+        // opcode::EXTCODECOPY => host::extcodecopy::<H, S>(interp, host),
+        // opcode::RETURNDATASIZE => system::returndatasize::<S>(interp),
+        // opcode::RETURNDATACOPY => system::returndatacopy::<S>(interp),
+        // opcode::BLOCKHASH => host::blockhash(interp, host),
+        // opcode::COINBASE => host_env::coinbase(interp, host),
+        // opcode::TIMESTAMP => host_env::timestamp(interp, host),
+        // opcode::NUMBER => host_env::number(interp, host),
+        // opcode::DIFFICULTY => host_env::difficulty(interp, host),
+        // opcode::GASLIMIT => host_env::gaslimit(interp, host),
+        // opcode::SLOAD => host::sload::<H, S>(interp, host),
+        // opcode::SSTORE => host::sstore::<H, S>(interp, host),
+        // opcode::GAS => system::gas(interp),
+        // opcode::LOG0 => host::log::<H, S>(interp, 0, host),
+        // opcode::LOG1 => host::log::<H, S>(interp, 1, host),
+        // opcode::LOG2 => host::log::<H, S>(interp, 2, host),
+        // opcode::LOG3 => host::log::<H, S>(interp, 3, host),
+        // opcode::LOG4 => host::log::<H, S>(interp, 4, host),
+        // opcode::SELFDESTRUCT => host::selfdestruct::<H, S>(interp, host),
+        // opcode::CREATE => host::create::<H, S>(interp, false, host), //check
+        // opcode::CREATE2 => host::create::<H, S>(interp, true, host), //check
+        // opcode::CALL => host::call::<H, S>(interp, CallScheme::Call, host), //check
+        // opcode::CALLCODE => host::call::<H, S>(interp, CallScheme::CallCode, host), //check
+        // opcode::DELEGATECALL => host::call::<H, S>(interp, CallScheme::DelegateCall, host), //check
+        // opcode::STATICCALL => host::call::<H, S>(interp, CallScheme::StaticCall, host), //check
+        // opcode::CHAINID => host_env::chainid::<H, S>(interp, host),
         _ => Return::OpcodeNotFound,
     }
 }

@@ -1,61 +1,61 @@
-use crate::{interpreter::Interpreter, Host, Return, Spec, SpecId::*};
+use crate::{Interpreter, Host, Return};
 use primitive_types::H256;
 
-pub fn chainid<H: Host, SPEC: Spec>(interp: &mut Interpreter, host: &mut H) -> Return {
-    // gas!(interp, gas::BASE);
+pub fn chainid(interpteret: &mut Interpreter, host: &mut dyn Host) -> Return {
+    // gas!(interpteret, gas::BASE);
     // EIP-1344: ChainID opcode
-    check!(SPEC::enabled(ISTANBUL));
-    push!(interp, host.env().cfg.chain_id);
+    //check!(SpecId::ISTANBUL.enabled_in(SPEC_ID));
+    push!(interpteret, host.env().cfg.chain_id);
     Return::Continue
 }
 
-pub fn coinbase<H: Host>(interp: &mut Interpreter, host: &mut H) -> Return {
-    // gas!(interp, gas::BASE);
-    push_h256!(interp, host.env().block.coinbase.into());
+pub fn coinbase(interpteret: &mut Interpreter, host: &mut dyn Host) -> Return {
+    // gas!(interpteret, gas::BASE);
+    push_h256!(interpteret, host.env().block.coinbase.into());
     Return::Continue
 }
 
-pub fn timestamp<H: Host>(interp: &mut Interpreter, host: &mut H) -> Return {
-    // gas!(interp, gas::BASE);
-    push!(interp, host.env().block.timestamp);
+pub fn timestamp(interpteret: &mut Interpreter, host: &mut dyn Host) -> Return {
+    // gas!(interpteret, gas::BASE);
+    push!(interpteret, host.env().block.timestamp);
     Return::Continue
 }
 
-pub fn number<H: Host>(interp: &mut Interpreter, host: &mut H) -> Return {
-    // gas!(interp, gas::BASE);
-    push!(interp, host.env().block.number);
+pub fn number(interpteret: &mut Interpreter, host: &mut dyn Host) -> Return {
+    // gas!(interpteret, gas::BASE);
+    push!(interpteret, host.env().block.number);
     Return::Continue
 }
 
-pub fn difficulty<H: Host>(interp: &mut Interpreter, host: &mut H) -> Return {
-    // gas!(interp, gas::BASE);
-    push!(interp, host.env().block.difficulty);
+pub fn difficulty(interpteret: &mut Interpreter, host: &mut dyn Host) -> Return {
+    // gas!(interpteret, gas::BASE);
+    push!(interpteret, host.env().block.difficulty);
     Return::Continue
 }
 
-pub fn gaslimit<H: Host>(interp: &mut Interpreter, host: &mut H) -> Return {
-    // gas!(interp, gas::BASE);
-    push!(interp, host.env().block.gas_limit);
+pub fn gaslimit(interpteret: &mut Interpreter, host: &mut dyn Host) -> Return {
+    // gas!(interpteret, gas::BASE);
+    push!(interpteret, host.env().block.gas_limit);
     Return::Continue
 }
 
-pub fn gasprice<H: Host>(interp: &mut Interpreter, host: &mut H) -> Return {
-    // gas!(interp, gas::BASE);
-    push!(interp, host.env().effective_gas_price());
+pub fn gasprice(interpteret: &mut Interpreter, host: &mut dyn Host) -> Return {
+    // gas!(interpteret, gas::BASE);
+    push!(interpteret, host.env().effective_gas_price());
     Return::Continue
 }
 
-pub fn basefee<H: Host, SPEC: Spec>(interp: &mut Interpreter, host: &mut H) -> Return {
-    // gas!(interp, gas::BASE);
+pub fn basefee(interpteret: &mut Interpreter, host: &mut dyn Host) -> Return {
+    // gas!(interpteret, gas::BASE);
     // EIP-3198: BASEFEE opcode
-    check!(SPEC::enabled(LONDON));
-    push!(interp, host.env().block.basefee);
+    //check!(SpecId::LONDON.enabled_in(SPEC_ID));
+    push!(interpteret, host.env().block.basefee);
     Return::Continue
 }
 
-pub fn origin<H: Host>(interp: &mut Interpreter, host: &mut H) -> Return {
-    // gas!(interp, gas::BASE);
+pub fn origin(interpteret: &mut Interpreter, host: &mut dyn Host) -> Return {
+    // gas!(interpteret, gas::BASE);
     let ret = H256::from(host.env().tx.caller);
-    push_h256!(interp, ret);
+    push_h256!(interpteret, ret);
     Return::Continue
 }

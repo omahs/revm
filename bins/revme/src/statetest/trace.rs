@@ -50,7 +50,7 @@ impl<DB: Database> Inspector<DB> for CustomPrintTracer {
         let opcode_str = opcode::OPCODE_JUMPMAP[opcode as usize];
 
         // calculate gas_block
-        let infos = spec_opcode_gas(data.env.cfg.spec_id);
+        let infos = spec_opcode_gas(data.env.cfg.spec_id, true);
         let info = &infos[opcode as usize];
 
         let gas_remaining = interp.gas.remaining() + self.full_gas_block - self.reduced_gas_block;

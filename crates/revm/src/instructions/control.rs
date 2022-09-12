@@ -1,4 +1,4 @@
-use crate::{gas, interpreter::Interpreter, Return, Spec, SpecId::*};
+use crate::{gas, interpreter::Interpreter, Return, Spec, SpecId::{*, self}};
 use primitive_types::U256;
 
 pub fn jump(interp: &mut Interpreter) -> Return {
@@ -59,10 +59,10 @@ pub fn ret(interp: &mut Interpreter) -> Return {
     Return::Return
 }
 
-pub fn revert<SPEC: Spec>(interp: &mut Interpreter) -> Return {
+pub fn revert<const SPEC_ID: u8>(interp: &mut Interpreter) -> Return {
     // zero gas cost gas!(interp,gas::ZERO);
     // EIP-140: REVERT instruction
-    check!(SPEC::enabled(BYZANTIUM));
+    check!(SpecId::BYZANTIUM.enabled_in(SPEC_ID));
     pop!(interp, start, len);
     let len = as_usize_or_fail!(len, Return::OutOfGas);
     if len == 0 {
