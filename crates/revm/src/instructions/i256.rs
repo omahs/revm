@@ -58,9 +58,9 @@ pub fn two_compl(op: U256) -> U256 {
 }
 
 #[inline(always)]
-pub fn i256_cmp(mut first: &U256, mut second: &U256) -> Ordering {
-    let first_sign = i256_sign::<false>(&mut first);
-    let second_sign = i256_sign::<false>(&mut second);
+pub fn i256_cmp(mut first: &mut U256, mut second: &mut U256) -> Ordering {
+    let first_sign = i256_sign::<false>(first);
+    let second_sign = i256_sign::<false>(second);
     match (first_sign, second_sign) {
         (Sign::Zero, Sign::Zero) => Ordering::Equal,
         (Sign::Zero, Sign::Plus) => Ordering::Less,

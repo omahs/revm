@@ -155,14 +155,14 @@ macro_rules! pop_top {
             return Return::StackUnderflow;
         }
         // Safety: Length is checked above.
-        let ($x1, $x2) = unsafe { $interp.stack.pop_top_unsafe() };
+        let (mut $x1, $x2) = unsafe { $interp.stack.pop_top_unsafe() };
     };
     ( $interp:expr, $x1:ident, $x2:ident, $x3:ident) => {
         if $interp.stack.len() < 3 {
             return Return::StackUnderflow;
         }
         // Safety: Length is checked above.
-        let ($x1, $x2, $x3) = unsafe { $interp.stack.pop2_top_unsafe() };
+        let (mut $x1, mut $x2, $x3) = unsafe { $interp.stack.pop2_top_unsafe() };
     };
 }
 

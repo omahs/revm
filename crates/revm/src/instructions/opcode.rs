@@ -189,7 +189,7 @@ pub fn return_invalid_opcode(_: &mut Interpreter, _: &mut dyn Host) -> Return {
     Return::InvalidOpcode
 }
 
-#[derive(Debug)]
+//#[derive(Debug)]
 pub struct OpInfo {
     /// Data contains few information packed inside u32:
     /// IS_JUMP (1bit) | IS_GAS_BLOCK_END (1bit) | IS_PUSH (1bit) | gas (29bits)

@@ -8,7 +8,7 @@ use primitive_types::U256;
 
 pub fn slt(interpreter: &mut Interpreter, _host: &mut dyn Host) -> Return {
     pop_top!(interpreter, op1, op2);
-    *op2 = if i256_cmp(&op1, op2) == Ordering::Less {
+    *op2 = if i256_cmp(&mut op1, op2) == Ordering::Less {
         U256::one()
     } else {
         U256::zero()
@@ -18,7 +18,7 @@ pub fn slt(interpreter: &mut Interpreter, _host: &mut dyn Host) -> Return {
 
 pub fn sgt(interpreter: &mut Interpreter, _host: &mut dyn Host) -> Return {
     pop_top!(interpreter, op1, op2);
-    *op2 = if i256_cmp(&op1, op2) == Ordering::Greater {
+    *op2 = if i256_cmp(&mut op1, op2) == Ordering::Greater {
         U256::one()
     } else {
         U256::zero()
@@ -84,7 +84,7 @@ pub fn shr(interpreter: &mut Interpreter, _host: &mut dyn Host) -> Return {
 
 pub fn sar(interpreter: &mut Interpreter, _host: &mut dyn Host) -> Return {
     pop_top!(interpreter, shift, value);
-    let value_sign = i256_sign::<true>(&mut value);
+    let value_sign = i256_sign::<true>(value);
 
     *value = if value.is_zero() || shift >= U256::from(256) {
         match value_sign {
