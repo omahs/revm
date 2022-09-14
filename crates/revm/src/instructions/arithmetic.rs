@@ -85,7 +85,9 @@ pub fn div(interpreter: &mut Interpreter, _host: &mut dyn Host) -> Return {
         U256::zero()
     } else {
         //op1 / op2
-        super::i256::div_u256::div_mod(op1, *op2).0
+        //super::i256::div_u256::div_mod(op1, op2).0
+        let t = unsafe { crate::fast_div_rem(op1.as_ref().as_ptr(), op2.as_ref().as_ptr()) };
+        U256([t.n1, t.n2, t.n3, t.n4])
     };
     Return::Continue
 }
