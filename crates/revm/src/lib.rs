@@ -21,7 +21,7 @@ pub use evm::{evm_inner, new, EVM};
 pub use gas::Gas;
 pub use inspector::{Inspector, NoOpInspector};
 pub use instructions::{
-    opcode::{self, spec_opcode_gas, OpCode, OPCODE_JUMPMAP},
+    opcode::{self, opcode_info_table, opcode_jump_table, OpCode, OPCODE_JUMPMAP},
     Return,
 };
 pub use interpreter::{

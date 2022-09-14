@@ -114,18 +114,16 @@ pub fn calldatacopy(interpreter: &mut Interpreter, _host: &mut dyn Host) -> Retu
     Return::Continue
 }
 
+/// Opcode enabled in BYZANTIUM: EIP-211: New opcodes: RETURNDATASIZE and RETURNDATACOPY
 pub fn returndatasize(interpreter: &mut Interpreter, _host: &mut dyn Host) -> Return {
     // gas!(interpreter, gas::BASE);
-    // EIP-211: New opcodes: RETURNDATASIZE and RETURNDATACOPY
-    //check!(SpecId::BYZANTIUM.enabled_in(SPEC_ID));
     let size = U256::from(interpreter.return_data_buffer.len());
     push!(interpreter, size);
     Return::Continue
 }
 
+/// Opcode enabled in BYZANTIUM: EIP-211: New opcodes: RETURNDATASIZE and RETURNDATACOPY
 pub fn returndatacopy(interpreter: &mut Interpreter, _host: &mut dyn Host) -> Return {
-    // EIP-211: New opcodes: RETURNDATASIZE and RETURNDATACOPY
-    //check!(SpecId::BYZANTIUM.enabled_in(SPEC_ID));
     pop!(interpreter, memory_offset, offset, len);
     let len = as_usize_or_fail!(len, Return::OutOfGas);
     gas_or_fail!(interpreter, gas::verylowcopy_cost(len as u64));

@@ -237,7 +237,7 @@ pub fn execute_test_suit(path: &Path, elapsed: &Arc<Mutex<Duration>>) -> Result<
 
                 *elapsed.lock().unwrap() += timer;
 
-                let is_legacy = !SpecId::enabled(evm.env.cfg.spec_id, SpecId::SPURIOUS_DRAGON);
+                let is_legacy = !SpecId::SPURIOUS_DRAGON.enabled_in(evm.env.cfg.spec_id as u8);
                 let db = evm.db().unwrap();
                 let state_root = state_merkle_trie_root(
                     db.accounts

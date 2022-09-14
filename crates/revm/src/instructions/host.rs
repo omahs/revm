@@ -1,10 +1,9 @@
 use crate::{
     alloc::vec::Vec,
     gas::{self, COLD_ACCOUNT_ACCESS_COST, WARM_STORAGE_READ_COST},
-    Interpreter,
     return_ok, return_revert, CallContext, CallInputs, CallScheme, CreateInputs, CreateScheme,
-    Host, Return, Spec,
-    SpecId::{*, self},
+    Host, Interpreter, Return, Spec,
+    SpecId::{self, *},
     Transfer,
 };
 use bytes::Bytes;
@@ -34,10 +33,12 @@ pub fn balance<const SPEC_ID: u8>(interpreter: &mut Interpreter, host: &mut dyn 
     Return::Continue
 }
 
-pub fn selfbalance<const SPEC_ID: u8>(interpreter: &mut Interpreter, host: &mut dyn Host) -> Return {
+/// Opcode is introduced in ISTANBUL: EIP-1884: Repricing for trie-size-dependent opcodes
+pub fn selfbalance<const SPEC_ID: u8>(
+    interpreter: &mut Interpreter,
+    host: &mut dyn Host,
+) -> Return {
     // gas!(interpreter, gas::LOW);
-    // EIP-1884: Repricing for trie-size-dependent opcodes
-    check!(SpecId::ISTANBUL.enabled_in(SPEC_ID));
     let ret = host.balance(interpreter.contract.address);
     if ret.is_none() {
         return Return::FatalExternalError;
@@ -48,7 +49,10 @@ pub fn selfbalance<const SPEC_ID: u8>(interpreter: &mut Interpreter, host: &mut 
     Return::Continue
 }
 
-pub fn extcodesize<const SPEC_ID: u8>(interpreter: &mut Interpreter, host: &mut dyn Host) -> Return {
+pub fn extcodesize<const SPEC_ID: u8>(
+    interpreter: &mut Interpreter,
+    host: &mut dyn Host,
+) -> Return {
     pop_address!(interpreter, address);
     let ret = host.code(address);
     if ret.is_none() {
@@ -57,7 +61,10 @@ pub fn extcodesize<const SPEC_ID: u8>(interpreter: &mut Interpreter, host: &mut 
     let (code, is_cold) = ret.unwrap();
     if SpecId::BERLIN.enabled_in(SPEC_ID) && is_cold {
         // WARM_STORAGE_READ_COST is already calculated in gas block
-        gas!(interpreter, COLD_ACCOUNT_ACCESS_COST - WARM_STORAGE_READ_COST);
+        gas!(
+            interpreter,
+            COLD_ACCOUNT_ACCESS_COST - WARM_STORAGE_READ_COST
+        );
     }
 
     push!(interpreter, U256::from(code.len()));
@@ -65,8 +72,11 @@ pub fn extcodesize<const SPEC_ID: u8>(interpreter: &mut Interpreter, host: &mut 
     Return::Continue
 }
 
-pub fn extcodehash<const SPEC_ID: u8>(interpreter: &mut Interpreter, host: &mut dyn Host) -> Return {
-    check!(SpecId::CONSTANTINOPLE.enabled_in(SPEC_ID)); // EIP-1052: EXTCODEHASH opcode
+/// Opcode enabled in CONSTANTINOPLE: EIP-1052: EXTCODEHASH opcode
+pub fn extcodehash<const SPEC_ID: u8>(
+    interpreter: &mut Interpreter,
+    host: &mut dyn Host,
+) -> Return {
     pop_address!(interpreter, address);
     let ret = host.code_hash(address);
     if ret.is_none() {
@@ -75,14 +85,20 @@ pub fn extcodehash<const SPEC_ID: u8>(interpreter: &mut Interpreter, host: &mut 
     let (code_hash, is_cold) = ret.unwrap();
     if SpecId::BERLIN.enabled_in(SPEC_ID) && is_cold {
         // WARM_STORAGE_READ_COST is already calculated in gas block
-        gas!(interpreter, COLD_ACCOUNT_ACCESS_COST - WARM_STORAGE_READ_COST);
+        gas!(
+            interpreter,
+            COLD_ACCOUNT_ACCESS_COST - WARM_STORAGE_READ_COST
+        );
     }
     push_h256!(interpreter, code_hash);
 
     Return::Continue
 }
 
-pub fn extcodecopy<const SPEC_ID: u8>(interpreter: &mut Interpreter, host: &mut dyn Host) -> Return {
+pub fn extcodecopy<const SPEC_ID: u8>(
+    interpreter: &mut Interpreter,
+    host: &mut dyn Host,
+) -> Return {
     pop_address!(interpreter, address);
     pop!(interpreter, memory_offset, code_offset, len_u256);
 
@@ -93,7 +109,10 @@ pub fn extcodecopy<const SPEC_ID: u8>(interpreter: &mut Interpreter, host: &mut 
     let (code, is_cold) = ret.unwrap();
 
     let len = as_usize_or_fail!(len_u256, Return::OutOfGas);
-    gas_or_fail!(interpreter, gas::extcodecopy_cost::<SPEC_ID>(len as u64, is_cold));
+    gas_or_fail!(
+        interpreter,
+        gas::extcodecopy_cost::<SPEC_ID>(len as u64, is_cold)
+    );
     if len == 0 {
         return Return::Continue;
     }
@@ -154,16 +173,21 @@ pub fn sstore<const SPEC_ID: u8>(interpreter: &mut Interpreter, host: &mut dyn H
         let remaining_gas = interpreter.gas.remaining();
         gas::sstore_cost::<SPEC_ID>(original, old, new, remaining_gas, is_cold)
     });
-    refund!(interpreter, gas::sstore_refund::<SPEC_ID>(original, old, new));
+    refund!(
+        interpreter,
+        gas::sstore_refund::<SPEC_ID>(original, old, new)
+    );
     interpreter.add_next_gas_block(interpreter.program_counter() - 1)
 }
 
-pub fn log<const SPEC_ID: u8>(interpreter: &mut Interpreter, n: u8, host: &mut dyn Host) -> Return {
-    //check!(!SPEC::IS_STATIC_CALL);
-
+// Is not available in static call
+pub fn log<const SPEC_ID: u8, const N: u8>(
+    interpreter: &mut Interpreter,
+    host: &mut dyn Host,
+) -> Return {
     pop!(interpreter, offset, len);
     let len = as_usize_or_fail!(len, Return::OutOfGas);
-    gas_or_fail!(interpreter, gas::log_cost(n, len as u64));
+    gas_or_fail!(interpreter, gas::log_cost(N, len as u64));
     let data = if len == 0 {
         Bytes::new()
     } else {
@@ -171,16 +195,21 @@ pub fn log<const SPEC_ID: u8>(interpreter: &mut Interpreter, n: u8, host: &mut d
         memory_resize!(interpreter, offset, len);
         Bytes::copy_from_slice(interpreter.memory.get_slice(offset, len))
     };
-    let n = n as usize;
-    if interpreter.stack.len() < n {
+
+    if interpreter.stack.len() < N as usize {
         return Return::StackUnderflow;
     }
 
-    let mut topics = Vec::with_capacity(n);
-    for _ in 0..(n) {
+    let mut topics = Vec::with_capacity(N as usize);
+    for _ in 0..(N) {
         let mut t = H256::zero();
         // Safety: stack bounds already checked few lines above
-        unsafe { interpreter.stack.pop_unsafe().to_big_endian(t.as_bytes_mut()) };
+        unsafe {
+            interpreter
+                .stack
+                .pop_unsafe()
+                .to_big_endian(t.as_bytes_mut())
+        };
         topics.push(t);
     }
 
@@ -188,8 +217,11 @@ pub fn log<const SPEC_ID: u8>(interpreter: &mut Interpreter, n: u8, host: &mut d
     Return::Continue
 }
 
-pub fn selfdestruct<const SPEC_ID: u8>(interpreter: &mut Interpreter, host: &mut dyn Host) -> Return {
-    //check!(!SPEC::IS_STATIC_CALL);
+/// In static call this opcode is not available
+pub fn selfdestruct<const SPEC_ID: u8>(
+    interpreter: &mut Interpreter,
+    host: &mut dyn Host,
+) -> Return {
     pop_address!(interpreter, target);
 
     let res = host.selfdestruct(interpreter.contract.address, target);
@@ -207,13 +239,12 @@ pub fn selfdestruct<const SPEC_ID: u8>(interpreter: &mut Interpreter, host: &mut
     Return::SelfDestruct
 }
 
-pub fn create<const SPEC_ID: u8>(
+pub fn create<const SPEC_ID: u8, const IS_CREATE2: bool>(
     interpreter: &mut Interpreter,
-    is_create2: bool,
     host: &mut dyn Host,
 ) -> Return {
     //check!(!SPEC::IS_STATIC_CALL);
-    if is_create2 {
+    if IS_CREATE2 {
         // EIP-1014: Skinny CREATE2
         check!(SpecId::PETERSBURG.enabled_in(SPEC_ID));
     }
@@ -231,7 +262,7 @@ pub fn create<const SPEC_ID: u8>(
         Bytes::copy_from_slice(interpreter.memory.get_slice(code_offset, len))
     };
 
-    let scheme = if is_create2 {
+    let scheme = if IS_CREATE2 {
         pop!(interpreter, salt);
         gas_or_fail!(interpreter, gas::create2_cost(len));
         CreateScheme::Create2 { salt }
@@ -278,7 +309,37 @@ pub fn create<const SPEC_ID: u8>(
     interpreter.add_next_gas_block(interpreter.program_counter() - 1)
 }
 
+// TODO make these calls nicer
+
 pub fn call<const SPEC_ID: u8, const IS_STATIC: bool>(
+    interpreter: &mut Interpreter,
+    host: &mut dyn Host,
+) -> Return {
+    call_template::<SPEC_ID, IS_STATIC>(interpreter, CallScheme::Call, host)
+}
+
+pub fn callcode<const SPEC_ID: u8, const IS_STATIC: bool>(
+    interpreter: &mut Interpreter,
+    host: &mut dyn Host,
+) -> Return {
+    call_template::<SPEC_ID, IS_STATIC>(interpreter, CallScheme::CallCode, host)
+}
+
+pub fn delegatecall<const SPEC_ID: u8, const IS_STATIC: bool>(
+    interpreter: &mut Interpreter,
+    host: &mut dyn Host,
+) -> Return {
+    call_template::<SPEC_ID, IS_STATIC>(interpreter, CallScheme::DelegateCall, host)
+}
+
+pub fn staticcall<const SPEC_ID: u8, const IS_STATIC: bool>(
+    interpreter: &mut Interpreter,
+    host: &mut dyn Host,
+) -> Return {
+    call_template::<SPEC_ID, IS_STATIC>(interpreter, CallScheme::StaticCall, host)
+}
+
+pub fn call_template<const SPEC_ID: u8, const IS_STATIC: bool>(
     interpreter: &mut Interpreter,
     scheme: CallScheme,
     host: &mut dyn Host,

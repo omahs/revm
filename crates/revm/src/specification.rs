@@ -1,7 +1,22 @@
 use revm_precompiles::SpecId as PrecompileId;
 
-
-pub const SPEC_ID_LONDON : u8 =16;
+pub const SPEC_ID_FRONTIER: u8 = 0;
+pub const SPEC_ID_FRONTIER_THAWING: u8 = 1;
+pub const SPEC_ID_HOMESTEAD: u8 = 2;
+pub const SPEC_ID_DAO_FORK: u8 = 3;
+pub const SPEC_ID_TANGERINE: u8 = 4;
+pub const SPEC_ID_SPURIOUS_DRAGON: u8 = 5;
+pub const SPEC_ID_BYZANTIUM: u8 = 6;
+pub const SPEC_ID_CONSTANTINOPLE: u8 = 7;
+pub const SPEC_ID_PETERSBURG: u8 = 8;
+pub const SPEC_ID_ISTANBUL: u8 = 9;
+pub const SPEC_ID_MUIR_GLACIER: u8 = 10;
+pub const SPEC_ID_BERLIN: u8 = 11;
+pub const SPEC_ID_LONDON: u8 = 12;
+pub const SPEC_ID_ARROW_GLACIER: u8 = 13;
+pub const SPEC_ID_GRAY_GLACIER: u8 = 14;
+pub const SPEC_ID_MERGE: u8 = 15;
+pub const SPEC_ID_LATEST: u8 = 16;
 
 /// SpecId and their activation block
 /// Information was obtained from: https://github.com/ethereum/execution-specs
@@ -10,23 +25,23 @@ pub const SPEC_ID_LONDON : u8 =16;
 #[cfg_attr(feature = "with-serde", derive(serde::Serialize, serde::Deserialize))]
 #[allow(non_camel_case_types)]
 pub enum SpecId {
-    FRONTIER = 0,         // Frontier	            0
-    FRONTIER_THAWING = 1, // Frontier Thawing       200000
-    HOMESTEAD = 2,        // Homestead	            1150000
-    DAO_FORK = 3,         // DAO Fork	            1920000
-    TANGERINE = 4,        // Tangerine Whistle	    2463000
-    SPURIOUS_DRAGON = 5,  // Spurious Dragon        2675000
-    BYZANTIUM = 6,        // Byzantium	            4370000
-    CONSTANTINOPLE = 7,   // Constantinople         7280000 is overwriten with PETERSBURG
-    PETERSBURG = 8,       // Petersburg             7280000
-    ISTANBUL = 9,         // Istanbul	            9069000
-    MUIR_GLACIER = 10,    // Muir Glacier	        9200000
-    BERLIN = 11,          // Berlin	                12244000
-    LONDON = 12,          // London	                12965000
-    ARROW_GLACIER = 13,   // Arrow Glacier	        13773000
-    GRAY_GLACIER = 14,    // Gray Glacier	        15050000
-    MERGE = 15,           // Paris/Merge	        TBD (Depends on difficulty)
-    LATEST = 16,
+    FRONTIER = SPEC_ID_FRONTIER,                 // Frontier	           0
+    FRONTIER_THAWING = SPEC_ID_FRONTIER_THAWING, // Frontier Thawing       200000
+    HOMESTEAD = SPEC_ID_HOMESTEAD,               // Homestead	           1150000
+    DAO_FORK = SPEC_ID_DAO_FORK,                 // DAO Fork	           1920000
+    TANGERINE = SPEC_ID_TANGERINE,               // Tangerine Whistle	   2463000
+    SPURIOUS_DRAGON = SPEC_ID_SPURIOUS_DRAGON,   // Spurious Dragon        2675000
+    BYZANTIUM = SPEC_ID_BYZANTIUM,               // Byzantium	           4370000
+    CONSTANTINOPLE = SPEC_ID_CONSTANTINOPLE, // Constantinople          7280000 is overwriten with PETERSBURG
+    PETERSBURG = SPEC_ID_PETERSBURG,         // Petersburg              7280000
+    ISTANBUL = SPEC_ID_ISTANBUL,             // Istanbul	            9069000
+    MUIR_GLACIER = SPEC_ID_MUIR_GLACIER,     // Muir Glacier	        9200000
+    BERLIN = SPEC_ID_BERLIN,                 // Berlin	                12244000
+    LONDON = SPEC_ID_LONDON,                 // London	                12965000
+    ARROW_GLACIER = SPEC_ID_ARROW_GLACIER,   // Arrow Glacier	        13773000
+    GRAY_GLACIER = SPEC_ID_GRAY_GLACIER,     // Gray Glacier	        15050000
+    MERGE = SPEC_ID_MERGE,                   // Paris/Merge	            TBD (Depends on difficulty)
+    LATEST = SPEC_ID_LATEST,
 }
 
 impl SpecId {
@@ -39,6 +54,10 @@ impl SpecId {
             ISTANBUL | MUIR_GLACIER => PrecompileId::ISTANBUL,
             BERLIN | LONDON | ARROW_GLACIER | GRAY_GLACIER | MERGE | LATEST => PrecompileId::BERLIN,
         }
+    }
+
+    pub const fn id(self) -> u8 {
+        self as u8
     }
 
     pub fn try_from_u8(spec_id: u8) -> Option<Self> {

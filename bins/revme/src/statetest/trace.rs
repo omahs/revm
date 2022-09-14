@@ -3,7 +3,7 @@ use primitive_types::H160;
 pub use revm::Inspector;
 use revm::{
     opcode::{self},
-    spec_opcode_gas, CallInputs, CreateInputs, Database, EVMData, Gas, Return,
+    opcode_info_table, CallInputs, CreateInputs, Database, EVMData, Gas, Return, LatestSpec,
 };
 
 #[derive(Clone)]
@@ -50,7 +50,7 @@ impl<DB: Database> Inspector<DB> for CustomPrintTracer {
         let opcode_str = opcode::OPCODE_JUMPMAP[opcode as usize];
 
         // calculate gas_block
-        let infos = spec_opcode_gas(data.env.cfg.spec_id, true);
+        let infos = opcode_info_table::<LatestSpec>();
         let info = &infos[opcode as usize];
 
         let gas_remaining = interp.gas.remaining() + self.full_gas_block - self.reduced_gas_block;

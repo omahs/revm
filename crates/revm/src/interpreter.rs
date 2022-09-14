@@ -8,10 +8,7 @@ pub use contract::Contract;
 pub use memory::Memory;
 pub use stack::Stack;
 
-use crate::{
-    instructions::{eval, Return},
-    Gas, Host, Spec, USE_GAS,
-};
+use crate::{instructions::Return, opcode::opcode_jump_table, Gas, Host, Spec, USE_GAS};
 use bytes::Bytes;
 use core::ops::Range;
 
@@ -121,6 +118,12 @@ impl Interpreter {
             return Return::OutOfGas;
         }
         
+        let jumptable = if self.is_static {
+            opcode_jump_table::<true, SPEC>()
+        } else {
+            opcode_jump_table::<false, SPEC>()
+        };
+
         if inspect {
             while ret == Return::Continue {
                 // step
@@ -133,18 +136,24 @@ impl Interpreter {
                 // byte instruction is STOP so we are safe to just increment program_counter bcs on last instruction
                 // it will do noop and just stop execution of this contract
                 self.instruction_pointer = unsafe { self.instruction_pointer.offset(1) };
-                ret = eval::<H, SPEC>(opcode, self, host);
+                // execute opcode
+                ret = jumptable[opcode as usize](self, host);
 
                 ret = host.step_end(self, ret);
             }
         } else {
-            while ret == Return::Continue {
-                let opcode = unsafe { *self.instruction_pointer };
+            let mut opcode;
+            loop {
+                opcode = unsafe { *self.instruction_pointer };
                 // Safety: In analysis we are doing padding of bytecode so that we are sure that last.
                 // byte instruction is STOP so we are safe to just increment program_counter bcs on last instruction
                 // it will do noop and just stop execution of this contract
                 self.instruction_pointer = unsafe { self.instruction_pointer.offset(1) };
-                ret = eval::<H, SPEC>(opcode, self, host);
+                // execute opcode
+                ret = jumptable[opcode as usize](self, host);
+                if ret !=  Return::Continue {
+                    return ret
+                }
             }
         }
         ret

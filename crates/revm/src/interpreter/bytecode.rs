@@ -1,5 +1,5 @@
 use super::contract::{AnalysisData, ValidJumpAddress};
-use crate::{opcode, spec_opcode_gas, Spec, KECCAK_EMPTY};
+use crate::{opcode, opcode_info_table, Spec, KECCAK_EMPTY};
 use bytes::Bytes;
 use primitive_types::H256;
 use sha3::{Digest, Keccak256};
@@ -197,7 +197,7 @@ impl Bytecode {
 
     /// Analyze bytecode to get jumptable and gas blocks.
     fn analyze<SPEC: Spec>(code: &[u8]) -> ValidJumpAddress {
-        let opcode_gas = spec_opcode_gas(SPEC::SPEC_ID, SPEC::SPEC_ID_U8,false);
+        let opcode_gas = opcode_info_table::<SPEC>();
 
         let mut analysis = ValidJumpAddress {
             first_gas_block: 0,

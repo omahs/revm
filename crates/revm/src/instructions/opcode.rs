@@ -1,3 +1,12 @@
+mod jump_table;
+mod info;
+mod name;
+
+pub use jump_table::opcode_jump_table;
+//pub use info::opcode_info_table;
+
+use crate::SPEC_ID_LATEST;
+use crate::Spec;
 use crate::gas;
 use crate::Host;
 use crate::Interpreter;
@@ -5,6 +14,7 @@ use crate::Return;
 use crate::SpecId;
 
 use super::{arithmetic, bitwise, system};
+use once_cell::sync::OnceCell;
 
 pub struct OpCode(u8);
 
@@ -189,7 +199,7 @@ pub fn return_invalid_opcode(_: &mut Interpreter, _: &mut dyn Host) -> Return {
     Return::InvalidOpcode
 }
 
-//#[derive(Debug)]
+#[derive(Copy, Clone)]
 pub struct OpInfo {
     /// Data contains few information packed inside u32:
     /// IS_JUMP (1bit) | IS_GAS_BLOCK_END (1bit) | IS_PUSH (1bit) | gas (29bits)
@@ -217,41 +227,48 @@ impl OpInfo {
         self.data & GAS_MASK
     }
 
-    pub const fn none() -> Self {
+    pub fn some1() -> Self {
         Self {
             data: 0,
             instruction: return_invalid_opcode,
         }
     }
 
-    pub const fn gas_block_end(gas: u64, instruction: InstructionFn) -> Self {
+    pub fn none() -> Self {
+        Self {
+            data: 0,
+            instruction: return_invalid_opcode,
+        }
+    }
+
+    pub fn gas_block_end(gas: u64, instruction: InstructionFn) -> Self {
         Self {
             data: gas as u32 | GAS_BLOCK_END_MASK,
             instruction,
         }
     }
-    pub const fn dynamic_gas(instruction: InstructionFn) -> Self {
+    pub fn dynamic_gas(instruction: InstructionFn) -> Self {
         Self {
             data: 0,
             instruction,
         }
     }
 
-    pub const fn gas(gas: u64, instruction: InstructionFn) -> Self {
+    pub fn gas(gas: u64, instruction: InstructionFn) -> Self {
         Self {
             data: gas as u32,
             instruction,
         }
     }
 
-    pub const fn push_opcode(instruction: InstructionFn) -> Self {
+    pub fn push_opcode(instruction: InstructionFn) -> Self {
         Self {
             data: gas::VERYLOW as u32 | IS_PUSH_MASK,
             instruction,
         }
     }
 
-    pub const fn jumpdest(instruction: InstructionFn) -> Self {
+    pub fn jumpdest(instruction: InstructionFn) -> Self {
         Self {
             data: JUMP_MASK | GAS_BLOCK_END_MASK,
             instruction,
@@ -259,9 +276,11 @@ impl OpInfo {
     }
 }
 
-macro_rules! gas_opcodee {
-    ($name:ident, $spec_id:literal) => {
-        const $name: &'static [OpInfo; 256] = &[
+macro_rules! create_opcode_info_table {
+    ($spec_id:tt) => { {
+        static INSTANCE: OnceCell<[OpInfo; 256]> = OnceCell::new();
+        INSTANCE.get_or_init(|| {
+            let jumptable: [OpInfo; 256] = [
             /* 0x00  STOP */ OpInfo::gas_block_end(0, return_stop),
             /* 0x01  ADD */ OpInfo::gas(gas::VERYLOW, arithmetic::overflowing_add),
             /* 0x02  MUL */ OpInfo::gas(gas::LOW, arithmetic::overflowing_mul),
@@ -601,18 +620,16 @@ macro_rules! gas_opcodee {
             /* 0xfe  INVALID */ OpInfo::gas_block_end(0, return_stop),
             /* 0xff  SELFDESTRUCT */ OpInfo::gas_block_end(0, return_stop),
         ];
-    };
+        jumptable
+    })
+    }
+}
 }
 
-pub const fn spec_opcode_gas(
-    spec_id: SpecId,
-    specidu8: u8,
-    is_static: bool,
-) -> &'static [OpInfo; 256] {
-    match spec_id {
+pub fn opcode_info_table<SPEC: Spec>() -> &'static [OpInfo; 256] {
+    match SPEC::SPEC_ID {
         SpecId::FRONTIER => {
-            gas_opcodee!(FRONTIER, 0);
-            FRONTIER
+            create_opcode_info_table!(0)
         }
         /*
         SpecId::FRONTIER_THAWING => {
@@ -685,8 +702,13 @@ pub const fn spec_opcode_gas(
             LATEST
         }*/
         _ => {
-            gas_opcodee!(LATEST, 15);
-            LATEST
+            create_opcode_info_table!(SPEC_ID_LATEST)
+            /*
+            static INSTANCE: OnceCell<[OpInfo; 256]> = OnceCell::new();
+            INSTANCE.get_or_init(|| {
+                gas_opcodee!(LATEST, 15);
+                LATEST
+            }) */
         }
     }
 }

@@ -1,10 +1,9 @@
 use crate::{Interpreter, Host, Return};
 use primitive_types::H256;
 
+/// Opcode enabled in ISTANBUL: EIP-1344: ChainID opcode
 pub fn chainid(interpteret: &mut Interpreter, host: &mut dyn Host) -> Return {
     // gas!(interpteret, gas::BASE);
-    // EIP-1344: ChainID opcode
-    //check!(SpecId::ISTANBUL.enabled_in(SPEC_ID));
     push!(interpteret, host.env().cfg.chain_id);
     Return::Continue
 }
@@ -45,10 +44,9 @@ pub fn gasprice(interpteret: &mut Interpreter, host: &mut dyn Host) -> Return {
     Return::Continue
 }
 
+/// Opcode enabled in LONDON: EIP-3198: BASEFEE opcode
 pub fn basefee(interpteret: &mut Interpreter, host: &mut dyn Host) -> Return {
     // gas!(interpteret, gas::BASE);
-    // EIP-3198: BASEFEE opcode
-    //check!(SpecId::LONDON.enabled_in(SPEC_ID));
     push!(interpteret, host.env().block.basefee);
     Return::Continue
 }
