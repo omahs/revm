@@ -1,56 +1,56 @@
-use crate::{gas, Host, Interpreter, Return, Spec, SpecId};
+use crate::{gas, Host, Interpreter, Return, Spec, SpecId, instructions::{u256_zero, u256_one}};
 
 use super::i256::{i256_div, i256_mod};
 use core::{convert::TryInto, ops::Rem};
 use primitive_types::{U256, U512};
 
-pub fn overflowing_add(interpreter: &mut Interpreter, host: &mut dyn Host) -> Return {
+pub fn overflowing_add(interpreter: &mut Interpreter) -> Return {
     pop_top!(interpreter, op1, op2);
     let (ret, ..) = op1.overflowing_add(*op2);
     *op2 = ret;
     Return::Continue
 }
 
-pub fn overflowing_mul(interpreter: &mut Interpreter, _host: &mut dyn Host) -> Return {
+pub fn overflowing_mul(interpreter: &mut Interpreter) -> Return {
     pop_top!(interpreter, op1, op2);
     let (ret, ..) = op1.overflowing_mul(*op2);
     *op2 = ret;
     Return::Continue
 }
 
-pub fn overflowing_sub(interpreter: &mut Interpreter, _host: &mut dyn Host) -> Return {
+pub fn overflowing_sub(interpreter: &mut Interpreter) -> Return {
     pop_top!(interpreter, op1, op2);
     let (ret, ..) = op1.overflowing_sub(*op2);
     *op2 = ret;
     Return::Continue
 }
 
-pub fn lt(interpreter: &mut Interpreter, _host: &mut dyn Host) -> Return {
+pub fn lt(interpreter: &mut Interpreter) -> Return {
     pop_top!(interpreter, op1, op2);
     *op2 = if op1.lt(op2) {
-        U256::one()
+        u256_one()
     } else {
-        U256::zero()
+        u256_zero()
     };
     Return::Continue
 }
 
-pub fn gt(interpreter: &mut Interpreter, _host: &mut dyn Host) -> Return {
+pub fn gt(interpreter: &mut Interpreter) -> Return {
     pop_top!(interpreter, op1, op2);
     *op2 = if op1.gt(op2) {
-        U256::one()
+        u256_one()
     } else {
-        U256::zero()
+        u256_zero()
     };
     Return::Continue
 }
 
-pub fn eq(interpreter: &mut Interpreter, _host: &mut dyn Host) -> Return {
+pub fn eq(interpreter: &mut Interpreter) -> Return {
     pop_top!(interpreter, op1, op2);
     *op2 = if op1.eq(op2) {
-        U256::one()
+        u256_one()
     } else {
-        U256::zero()
+        u256_zero()
     };
     Return::Continue
 }
@@ -79,10 +79,10 @@ opcode::XOR => op2_u256!(interp, bitxor),
 opcode::NOT => op1_u256_fn!(interp, bitwise::not),
 opcode::BYTE => op2_u256_fn!(interp, bitwise::byte),
  */
-pub fn div(interpreter: &mut Interpreter, _host: &mut dyn Host) -> Return {
+pub fn div(interpreter: &mut Interpreter) -> Return {
     pop_top!(interpreter, op1, op2);
     *op2 = if op2.is_zero() {
-        U256::zero()
+        u256_zero()
     } else {
         //op1 / op2
         //super::i256::div_u256::div_mod(op1, op2).0
@@ -92,36 +92,36 @@ pub fn div(interpreter: &mut Interpreter, _host: &mut dyn Host) -> Return {
     Return::Continue
 }
 
-pub fn sdiv(interpreter: &mut Interpreter, _host: &mut dyn Host) -> Return {
+pub fn sdiv(interpreter: &mut Interpreter) -> Return {
     pop_top!(interpreter, op1, op2);
-    *op2 = i256_div(op1, *op2);
+    i256_div(op1, op2);
     Return::Continue
 }
 
-pub fn rem(interpreter: &mut Interpreter, _host: &mut dyn Host) -> Return {
+pub fn rem(interpreter: &mut Interpreter) -> Return {
     pop_top!(interpreter, op1, op2);
     *op2 = if op2.is_zero() {
-        U256::zero()
+        u256_zero()
     } else {
         op1.rem(*op2)
     };
     Return::Continue
 }
 
-pub fn smod(interpreter: &mut Interpreter, _host: &mut dyn Host) -> Return {
+pub fn smod(interpreter: &mut Interpreter) -> Return {
     pop_top!(interpreter, op1, op2);
     *op2 = if op2.is_zero() {
-        U256::zero()
+        u256_zero()
     } else {
         i256_mod(op1, *op2)
     };
     Return::Continue
 }
 
-pub fn addmod(interpreter: &mut Interpreter, _host: &mut dyn Host) -> Return {
+pub fn addmod(interpreter: &mut Interpreter) -> Return {
     pop_top!(interpreter, op1, op2, op3);
     *op3 = if op3.is_zero() {
-        U256::zero()
+        u256_zero()
     } else {
         let op1: U512 = op1.into();
         let op2: U512 = op2.into();
@@ -133,10 +133,10 @@ pub fn addmod(interpreter: &mut Interpreter, _host: &mut dyn Host) -> Return {
     Return::Continue
 }
 
-pub fn mulmod(interpreter: &mut Interpreter, _host: &mut dyn Host) -> Return {
+pub fn mulmod(interpreter: &mut Interpreter) -> Return {
     pop_top!(interpreter, op1, op2, op3);
     *op3 = if op3.is_zero() {
-        U256::zero()
+        u256_zero()
     } else {
         let op1: U512 = op1.into();
         let op2: U512 = op2.into();
@@ -148,7 +148,7 @@ pub fn mulmod(interpreter: &mut Interpreter, _host: &mut dyn Host) -> Return {
     Return::Continue
 }
 
-pub fn eval_exp<const SPEC_ID: u8>(interpreter: &mut Interpreter, _host: &mut dyn Host) -> Return {
+pub fn eval_exp<const SPEC_ID: u8>(interpreter: &mut Interpreter) -> Return {
     pop_top!(interpreter, op1, op2);
     gas_or_fail!(interpreter, gas::exp_cost::<SPEC_ID>(*op2));
     let mut op1 = op1;
@@ -183,13 +183,13 @@ pub fn eval_exp<const SPEC_ID: u8>(interpreter: &mut Interpreter, _host: &mut dy
 /// `b == 0` then the yellow paper says the output should start with all zeros, then end with
 /// bits from `b`; this is equal to `y & mask` where `&` is bitwise `AND`.
 
-pub fn signextend(interpreter: &mut Interpreter, _host: &mut dyn Host) -> Return {
+pub fn signextend(interpreter: &mut Interpreter) -> Return {
     pop_top!(interpreter, op1, op2);
     if op1 < U256::from(32) {
         // `low_u32` works since op1 < 32
         let bit_index = (8 * op1.low_u32() + 7) as usize;
         let bit = op2.bit(bit_index);
-        let mask = (U256::one() << bit_index) - U256::one();
+        let mask = (u256_one() << bit_index) - u256_one();
         *op2 = if bit { *op2 | !mask } else { *op2 & mask };
     }
     Return::Continue
@@ -206,15 +206,15 @@ mod tests {
     // #[test]
     // fn test_signextend() {
     //     let test_values = vec![
-    //         U256::zero(),
-    //         U256::one(),
+    //         u256_zero(),
+    //         u256_one(),
     //         U256::from(8),
     //         U256::from(10),
     //         U256::from(65),
     //         U256::from(100),
     //         U256::from(128),
-    //         U256::from(11) * (U256::one() << 65),
-    //         U256::from(7) * (U256::one() << 123),
+    //         U256::from(11) * (u256_one() << 65),
+    //         U256::from(7) * (u256_one() << 123),
     //         U256::MAX / 167,
     //         U256::MAX,
     //     ];
@@ -236,13 +236,13 @@ mod tests {
     //     if op1 > U256::from(32) {
     //         op2
     //     } else {
-    //         let mut ret = U256::zero();
+    //         let mut ret = u256_zero();
     //         let len: usize = op1.as_usize();
     //         let t: usize = 8 * (len + 1) - 1;
-    //         let t_bit_mask = U256::one() << t;
+    //         let t_bit_mask = u256_one() << t;
     //         let t_value = (op2 & t_bit_mask) >> t;
     //         for i in 0..256 {
-    //             let bit_mask = U256::one() << i;
+    //             let bit_mask = u256_one() << i;
     //             let i_value = (op2 & bit_mask) >> i;
     //             if i <= t {
     //                 ret = ret.overflowing_add(i_value << i).0;

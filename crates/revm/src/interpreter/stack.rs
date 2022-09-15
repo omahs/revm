@@ -222,7 +222,11 @@ impl Stack {
         } else {
             // Safety: check for out of bounds is done above and it makes this safe to do.
             unsafe {
-                *self.data.get_unchecked_mut(len) = *self.data.get_unchecked(len - N);
+                std::ptr::copy_nonoverlapping(
+                    self.data.get_unchecked_mut(len - N).0.as_mut_ptr(),
+                    self.data.get_unchecked_mut(len).0.as_mut_ptr(),
+                    4, // U256 has 4 u64 numbers
+                );
                 self.data.set_len(len + 1);
             }
             Return::Continue

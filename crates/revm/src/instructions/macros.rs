@@ -203,7 +203,7 @@ macro_rules! op2_u256_bool_ref {
         // gas!($interp, $gas);
         pop_top!($interp, op1, op2);
         let ret = op1.$op(&op2);
-        *op2 = if ret { U256::one() } else { U256::zero() };
+        *op2 = if ret { u256_one() } else { u256_zero() };
 
         Return::Continue
     }};

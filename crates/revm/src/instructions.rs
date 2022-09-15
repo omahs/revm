@@ -73,3 +73,15 @@ pub enum Return {
     /// Error on created contract that begins with EF
     CreateContractWithEF,
 }
+
+pub const fn u256_one() -> U256 {
+    make_u256(1)
+}
+
+pub const fn u256_zero() -> U256 {
+    make_u256(0)
+}
+
+pub const fn make_u256(x: u64) -> U256 {
+    U256([x,0,0,0])
+}

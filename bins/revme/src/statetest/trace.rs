@@ -3,7 +3,7 @@ use primitive_types::H160;
 pub use revm::Inspector;
 use revm::{
     opcode::{self},
-    opcode_info_table, CallInputs, CreateInputs, Database, EVMData, Gas, Return, LatestSpec,
+    opcode_info_table, CallInputs, CreateInputs, Database, EVMData, Gas, LatestSpec, Return,
 };
 
 #[derive(Clone)]

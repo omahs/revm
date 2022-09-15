@@ -4,15 +4,15 @@ use crate::{
     return_ok, return_revert, CallContext, CallInputs, CallScheme, CreateInputs, CreateScheme,
     Host, Interpreter, Return, Spec,
     SpecId::{self, *},
-    Transfer,
+    Transfer, instructions::{u256_zero, u256_one},
 };
 use bytes::Bytes;
 use core::cmp::min;
 use primitive_types::{H160, H256, U256};
 
-pub fn balance<const SPEC_ID: u8>(interpreter: &mut Interpreter, host: &mut dyn Host) -> Return {
+pub fn balance<const SPEC_ID: u8>(interpreter: &mut Interpreter) -> Return {
     pop_address!(interpreter, address);
-    let ret = host.balance(address);
+    let ret = interpreter.host.balance(address);
     if ret.is_none() {
         return Return::FatalExternalError;
     }
@@ -34,12 +34,9 @@ pub fn balance<const SPEC_ID: u8>(interpreter: &mut Interpreter, host: &mut dyn 
 }
 
 /// Opcode is introduced in ISTANBUL: EIP-1884: Repricing for trie-size-dependent opcodes
-pub fn selfbalance<const SPEC_ID: u8>(
-    interpreter: &mut Interpreter,
-    host: &mut dyn Host,
-) -> Return {
+pub fn selfbalance<const SPEC_ID: u8>(interpreter: &mut Interpreter) -> Return {
     // gas!(interpreter, gas::LOW);
-    let ret = host.balance(interpreter.contract.address);
+    let ret = interpreter.host.balance(interpreter.contract.address);
     if ret.is_none() {
         return Return::FatalExternalError;
     }
@@ -49,12 +46,9 @@ pub fn selfbalance<const SPEC_ID: u8>(
     Return::Continue
 }
 
-pub fn extcodesize<const SPEC_ID: u8>(
-    interpreter: &mut Interpreter,
-    host: &mut dyn Host,
-) -> Return {
+pub fn extcodesize<const SPEC_ID: u8>(interpreter: &mut Interpreter) -> Return {
     pop_address!(interpreter, address);
-    let ret = host.code(address);
+    let ret = interpreter.host.code(address);
     if ret.is_none() {
         return Return::FatalExternalError;
     }
@@ -73,12 +67,9 @@ pub fn extcodesize<const SPEC_ID: u8>(
 }
 
 /// Opcode enabled in CONSTANTINOPLE: EIP-1052: EXTCODEHASH opcode
-pub fn extcodehash<const SPEC_ID: u8>(
-    interpreter: &mut Interpreter,
-    host: &mut dyn Host,
-) -> Return {
+pub fn extcodehash<const SPEC_ID: u8>(interpreter: &mut Interpreter) -> Return {
     pop_address!(interpreter, address);
-    let ret = host.code_hash(address);
+    let ret = interpreter.host.code_hash(address);
     if ret.is_none() {
         return Return::FatalExternalError;
     }
@@ -95,14 +86,11 @@ pub fn extcodehash<const SPEC_ID: u8>(
     Return::Continue
 }
 
-pub fn extcodecopy<const SPEC_ID: u8>(
-    interpreter: &mut Interpreter,
-    host: &mut dyn Host,
-) -> Return {
+pub fn extcodecopy<const SPEC_ID: u8>(interpreter: &mut Interpreter) -> Return {
     pop_address!(interpreter, address);
     pop!(interpreter, memory_offset, code_offset, len_u256);
 
-    let ret = host.code(address);
+    let ret = interpreter.host.code(address);
     if ret.is_none() {
         return Return::FatalExternalError;
     }
@@ -127,15 +115,15 @@ pub fn extcodecopy<const SPEC_ID: u8>(
     Return::Continue
 }
 
-pub fn blockhash(interpreter: &mut Interpreter, host: &mut dyn Host) -> Return {
+pub fn blockhash(interpreter: &mut Interpreter) -> Return {
     // gas!(interpreter, gas::BLOCKHASH);
     pop_top!(interpreter, number);
 
-    if let Some(diff) = host.env().block.number.checked_sub(*number) {
+    if let Some(diff) = interpreter.host.env().block.number.checked_sub(*number) {
         let diff = as_usize_saturated!(diff);
         // blockhash should push zero if number is same as current block number.
         if diff <= 256 && diff != 0 {
-            let ret = host.block_hash(*number);
+            let ret = interpreter.host.block_hash(*number);
             if ret.is_none() {
                 return Return::FatalExternalError;
             }
@@ -143,14 +131,14 @@ pub fn blockhash(interpreter: &mut Interpreter, host: &mut dyn Host) -> Return {
             return Return::Continue;
         }
     }
-    *number = U256::zero();
+    *number = u256_zero();
     Return::Continue
 }
 
-pub fn sload<const SPEC_ID: u8>(interpreter: &mut Interpreter, host: &mut dyn Host) -> Return {
+pub fn sload<const SPEC_ID: u8>(interpreter: &mut Interpreter) -> Return {
     pop!(interpreter, index);
 
-    let ret = host.sload(interpreter.contract.address, index);
+    let ret = interpreter.host.sload(interpreter.contract.address, index);
     if ret.is_none() {
         return Return::FatalExternalError;
     }
@@ -160,11 +148,13 @@ pub fn sload<const SPEC_ID: u8>(interpreter: &mut Interpreter, host: &mut dyn Ho
     Return::Continue
 }
 
-pub fn sstore<const SPEC_ID: u8>(interpreter: &mut Interpreter, host: &mut dyn Host) -> Return {
+pub fn sstore<const SPEC_ID: u8>(interpreter: &mut Interpreter) -> Return {
     //check!(!SPEC::IS_STATIC_CALL);
 
     pop!(interpreter, index, value);
-    let ret = host.sstore(interpreter.contract.address, index, value);
+    let ret = interpreter
+        .host
+        .sstore(interpreter.contract.address, index, value);
     if ret.is_none() {
         return Return::FatalExternalError;
     }
@@ -181,10 +171,7 @@ pub fn sstore<const SPEC_ID: u8>(interpreter: &mut Interpreter, host: &mut dyn H
 }
 
 // Is not available in static call
-pub fn log<const SPEC_ID: u8, const N: u8>(
-    interpreter: &mut Interpreter,
-    host: &mut dyn Host,
-) -> Return {
+pub fn log<const SPEC_ID: u8, const N: u8>(interpreter: &mut Interpreter) -> Return {
     pop!(interpreter, offset, len);
     let len = as_usize_or_fail!(len, Return::OutOfGas);
     gas_or_fail!(interpreter, gas::log_cost(N, len as u64));
@@ -213,18 +200,19 @@ pub fn log<const SPEC_ID: u8, const N: u8>(
         topics.push(t);
     }
 
-    host.log(interpreter.contract.address, topics, data);
+    interpreter
+        .host
+        .log(interpreter.contract.address, topics, data);
     Return::Continue
 }
 
 /// In static call this opcode is not available
-pub fn selfdestruct<const SPEC_ID: u8>(
-    interpreter: &mut Interpreter,
-    host: &mut dyn Host,
-) -> Return {
+pub fn selfdestruct<const SPEC_ID: u8>(interpreter: &mut Interpreter) -> Return {
     pop_address!(interpreter, target);
 
-    let res = host.selfdestruct(interpreter.contract.address, target);
+    let res = interpreter
+        .host
+        .selfdestruct(interpreter.contract.address, target);
     if res.is_none() {
         return Return::FatalExternalError;
     }
@@ -239,10 +227,7 @@ pub fn selfdestruct<const SPEC_ID: u8>(
     Return::SelfDestruct
 }
 
-pub fn create<const SPEC_ID: u8, const IS_CREATE2: bool>(
-    interpreter: &mut Interpreter,
-    host: &mut dyn Host,
-) -> Return {
+pub fn create<const SPEC_ID: u8, const IS_CREATE2: bool>(interpreter: &mut Interpreter) -> Return {
     //check!(!SPEC::IS_STATIC_CALL);
     if IS_CREATE2 {
         // EIP-1014: Skinny CREATE2
@@ -288,7 +273,7 @@ pub fn create<const SPEC_ID: u8, const IS_CREATE2: bool>(
         gas_limit,
     };
 
-    let (return_reason, address, gas, return_data) = host.create(&mut create_input);
+    let (return_reason, address, gas, return_data) = interpreter.host.create(&mut create_input);
     interpreter.return_data_buffer = return_data;
 
     match return_reason {
@@ -311,38 +296,29 @@ pub fn create<const SPEC_ID: u8, const IS_CREATE2: bool>(
 
 // TODO make these calls nicer
 
-pub fn call<const SPEC_ID: u8, const IS_STATIC: bool>(
-    interpreter: &mut Interpreter,
-    host: &mut dyn Host,
-) -> Return {
-    call_template::<SPEC_ID, IS_STATIC>(interpreter, CallScheme::Call, host)
+pub fn call<const SPEC_ID: u8, const IS_STATIC: bool>(interpreter: &mut Interpreter) -> Return {
+    call_template::<SPEC_ID, IS_STATIC>(interpreter, CallScheme::Call)
 }
 
-pub fn callcode<const SPEC_ID: u8, const IS_STATIC: bool>(
-    interpreter: &mut Interpreter,
-    host: &mut dyn Host,
-) -> Return {
-    call_template::<SPEC_ID, IS_STATIC>(interpreter, CallScheme::CallCode, host)
+pub fn callcode<const SPEC_ID: u8, const IS_STATIC: bool>(interpreter: &mut Interpreter) -> Return {
+    call_template::<SPEC_ID, IS_STATIC>(interpreter, CallScheme::CallCode)
 }
 
 pub fn delegatecall<const SPEC_ID: u8, const IS_STATIC: bool>(
     interpreter: &mut Interpreter,
-    host: &mut dyn Host,
 ) -> Return {
-    call_template::<SPEC_ID, IS_STATIC>(interpreter, CallScheme::DelegateCall, host)
+    call_template::<SPEC_ID, IS_STATIC>(interpreter, CallScheme::DelegateCall)
 }
 
 pub fn staticcall<const SPEC_ID: u8, const IS_STATIC: bool>(
     interpreter: &mut Interpreter,
-    host: &mut dyn Host,
 ) -> Return {
-    call_template::<SPEC_ID, IS_STATIC>(interpreter, CallScheme::StaticCall, host)
+    call_template::<SPEC_ID, IS_STATIC>(interpreter, CallScheme::StaticCall)
 }
 
 pub fn call_template<const SPEC_ID: u8, const IS_STATIC: bool>(
     interpreter: &mut Interpreter,
     scheme: CallScheme,
-    host: &mut dyn Host,
 ) -> Return {
     match scheme {
         CallScheme::DelegateCall => check!(SpecId::HOMESTEAD.enabled_in(SPEC_ID)), // EIP-7: DELEGATECALL
@@ -372,7 +348,7 @@ pub fn call_template<const SPEC_ID: u8, const IS_STATIC: bool>(
             }
             value
         }
-        CallScheme::DelegateCall | CallScheme::StaticCall => U256::zero(),
+        CallScheme::DelegateCall | CallScheme::StaticCall => u256_zero(),
     };
 
     pop!(interpreter, in_offset, in_len, out_offset, out_len);
@@ -436,12 +412,12 @@ pub fn call_template<const SPEC_ID: u8, const IS_STATIC: bool>(
         Transfer {
             source: interpreter.contract.address,
             target: interpreter.contract.address,
-            value: U256::zero(),
+            value: u256_zero(),
         }
     };
 
     // load account and calculate gas cost.
-    let res = host.load_account(to);
+    let res = interpreter.host.load_account(to);
     if res.is_none() {
         return Return::FatalExternalError;
     }
@@ -485,7 +461,7 @@ pub fn call_template<const SPEC_ID: u8, const IS_STATIC: bool>(
         is_static,
     };
     // CALL CONTRACT, with static or ordinary spec.
-    let (reason, gas, return_data) = host.call(&mut call_input);
+    let (reason, gas, return_data) = interpreter.host.call(&mut call_input);
     interpreter.return_data_buffer = return_data;
 
     let target_len = min(out_len, interpreter.return_data_buffer.len());
@@ -498,18 +474,18 @@ pub fn call_template<const SPEC_ID: u8, const IS_STATIC: bool>(
             interpreter
                 .memory
                 .set(out_offset, &interpreter.return_data_buffer[..target_len]);
-            push!(interpreter, U256::one());
+            push!(interpreter, u256_one());
         }
         return_revert!() => {
             interpreter.gas.erase_cost(gas.remaining());
             interpreter
                 .memory
                 .set(out_offset, &interpreter.return_data_buffer[..target_len]);
-            push!(interpreter, U256::zero());
+            push!(interpreter, u256_zero());
         }
         Return::FatalExternalError => return Return::FatalExternalError,
         _ => {
-            push!(interpreter, U256::zero());
+            push!(interpreter, u256_zero());
         }
     }
     interpreter.add_next_gas_block(interpreter.program_counter() - 1)

@@ -1,59 +1,59 @@
-use crate::{Interpreter, Host, Return};
+use crate::{Host, Interpreter, Return};
 use primitive_types::H256;
 
 /// Opcode enabled in ISTANBUL: EIP-1344: ChainID opcode
-pub fn chainid(interpteret: &mut Interpreter, host: &mut dyn Host) -> Return {
-    // gas!(interpteret, gas::BASE);
-    push!(interpteret, host.env().cfg.chain_id);
+pub fn chainid(interpreter: &mut Interpreter) -> Return {
+    // gas!(interpreter, gas::BASE);
+    push!(interpreter, interpreter.host.env().cfg.chain_id);
     Return::Continue
 }
 
-pub fn coinbase(interpteret: &mut Interpreter, host: &mut dyn Host) -> Return {
-    // gas!(interpteret, gas::BASE);
-    push_h256!(interpteret, host.env().block.coinbase.into());
+pub fn coinbase(interpreter: &mut Interpreter) -> Return {
+    // gas!(interpreter, gas::BASE);
+    push_h256!(interpreter, interpreter.host.env().block.coinbase.into());
     Return::Continue
 }
 
-pub fn timestamp(interpteret: &mut Interpreter, host: &mut dyn Host) -> Return {
-    // gas!(interpteret, gas::BASE);
-    push!(interpteret, host.env().block.timestamp);
+pub fn timestamp(interpreter: &mut Interpreter) -> Return {
+    // gas!(interpreter, gas::BASE);
+    push!(interpreter, interpreter.host.env().block.timestamp);
     Return::Continue
 }
 
-pub fn number(interpteret: &mut Interpreter, host: &mut dyn Host) -> Return {
-    // gas!(interpteret, gas::BASE);
-    push!(interpteret, host.env().block.number);
+pub fn number(interpreter: &mut Interpreter) -> Return {
+    // gas!(interpreter, gas::BASE);
+    push!(interpreter, interpreter.host.env().block.number);
     Return::Continue
 }
 
-pub fn difficulty(interpteret: &mut Interpreter, host: &mut dyn Host) -> Return {
-    // gas!(interpteret, gas::BASE);
-    push!(interpteret, host.env().block.difficulty);
+pub fn difficulty(interpreter: &mut Interpreter) -> Return {
+    // gas!(interpreter, gas::BASE);
+    push!(interpreter, interpreter.host.env().block.difficulty);
     Return::Continue
 }
 
-pub fn gaslimit(interpteret: &mut Interpreter, host: &mut dyn Host) -> Return {
-    // gas!(interpteret, gas::BASE);
-    push!(interpteret, host.env().block.gas_limit);
+pub fn gaslimit(interpreter: &mut Interpreter) -> Return {
+    // gas!(interpreter, gas::BASE);
+    push!(interpreter, interpreter.host.env().block.gas_limit);
     Return::Continue
 }
 
-pub fn gasprice(interpteret: &mut Interpreter, host: &mut dyn Host) -> Return {
-    // gas!(interpteret, gas::BASE);
-    push!(interpteret, host.env().effective_gas_price());
+pub fn gasprice(interpreter: &mut Interpreter) -> Return {
+    // gas!(interpreter, gas::BASE);
+    push!(interpreter, interpreter.host.env().effective_gas_price());
     Return::Continue
 }
 
 /// Opcode enabled in LONDON: EIP-3198: BASEFEE opcode
-pub fn basefee(interpteret: &mut Interpreter, host: &mut dyn Host) -> Return {
-    // gas!(interpteret, gas::BASE);
-    push!(interpteret, host.env().block.basefee);
+pub fn basefee(interpreter: &mut Interpreter) -> Return {
+    // gas!(interpreter, gas::BASE);
+    push!(interpreter, interpreter.host.env().block.basefee);
     Return::Continue
 }
 
-pub fn origin(interpteret: &mut Interpreter, host: &mut dyn Host) -> Return {
-    // gas!(interpteret, gas::BASE);
-    let ret = H256::from(host.env().tx.caller);
-    push_h256!(interpteret, ret);
+pub fn origin(interpreter: &mut Interpreter) -> Return {
+    // gas!(interpreter, gas::BASE);
+    let ret = H256::from(interpreter.host.env().tx.caller);
+    push_h256!(interpreter, ret);
     Return::Continue
 }

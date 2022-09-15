@@ -208,6 +208,8 @@ impl Bytecode {
         let mut index = 0;
         let mut gas_in_block: u32 = 0;
         let mut block_start: usize = 0;
+        let mut stack_min_items = 0;
+        let mut stack_max_items = 0;
 
         // first gas block
         while index < code.len() {

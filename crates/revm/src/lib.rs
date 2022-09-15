@@ -35,12 +35,10 @@ extern crate alloc;
 
 pub(crate) const USE_GAS: bool = !cfg!(feature = "no_gas_measuring");
 
-<<<<<<< HEAD
 // reexport `revm_precompiles`
 pub mod precompiles {
     pub use revm_precompiles::*;
 }
-=======
 
 #[repr(C)]
 #[derive(Debug)]
@@ -56,15 +54,12 @@ extern "C" {
     pub fn fast_div_rem(f: *const u64, s: *const u64) -> RetUint;
 }
 
-
-use primitive_types::{U256,H256};
+use primitive_types::{H256, U256};
 
 pub fn test_it() {
     let f = U256::from_big_endian(H256::from_low_u64_be(20).as_ref());
     let s = U256::from_big_endian(H256::from_low_u64_be(10).as_ref());
 
-    let t = unsafe { fast_div_rem(f.as_ref().as_ptr(),s.as_ref().as_ptr())};
-    println!("TEST_IT:{:?}",t);
-
-} 
->>>>>>> origin/intx
+    let t = unsafe { fast_div_rem(f.as_ref().as_ptr(), s.as_ref().as_ptr()) };
+    println!("TEST_IT:{:?}", t);
+}

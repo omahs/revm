@@ -15,7 +15,7 @@ use core::ops::Range;
 pub const STACK_LIMIT: u64 = 1024;
 pub const CALL_STACK_LIMIT: u64 = 1024;
 
-pub struct Interpreter {
+pub struct Interpreter<'a> {
     /// Contract information and invoking data
     pub contract: Contract,
     /// Instruction pointer.
@@ -32,6 +32,8 @@ pub struct Interpreter {
     pub return_range: Range<usize>,
     /// Is static call
     pub is_static: bool,
+
+    pub host: &'a mut dyn Host,
     /// Host
     //pub host: Option<Box<dyn Host>>,
     /// Memory limit. See [`crate::CfgEnv`].
@@ -39,12 +41,12 @@ pub struct Interpreter {
     pub memory_limit: u64,
 }
 
-impl Interpreter {
+impl<'a> Interpreter<'a> {
     pub fn current_opcode(&self) -> u8 {
         unsafe { *self.instruction_pointer }
     }
     #[cfg(not(feature = "memory_limit"))]
-    pub fn new(contract: Contract, gas_limit: u64, is_static: bool) -> Self {
+    pub fn new(host: &'a mut dyn Host, contract: Contract, gas_limit: u64, is_static: bool) -> Self {
         Self {
             instruction_pointer: contract.bytecode.as_ptr(),
             return_range: Range::default(),
@@ -52,6 +54,7 @@ impl Interpreter {
             stack: Stack::new(),
             return_data_buffer: Bytes::new(),
             contract,
+            host,
             gas: Gas::new(gas_limit),
             is_static,
         }
@@ -110,14 +113,14 @@ impl Interpreter {
     }
 
     /// loop steps until we are finished with execution
-    pub fn run<H: Host, SPEC: Spec>(&mut self, host: &mut H, inspect: bool) -> Return {
+    pub fn run<SPEC: Spec>(&mut self, inspect: bool) -> Return {
         //let timer = std::time::Instant::now();
         let mut ret = Return::Continue;
         // add first gas_block
         if USE_GAS && !self.gas.record_cost(self.contract.first_gas_block()) {
             return Return::OutOfGas;
         }
-        
+
         let jumptable = if self.is_static {
             opcode_jump_table::<true, SPEC>()
         } else {
@@ -127,33 +130,29 @@ impl Interpreter {
         if inspect {
             while ret == Return::Continue {
                 // step
-                ret = host.step(self);
-                if ret != Return::Continue {
-                    break;
-                }
+                // ret = self.host.step(self);
+                // if ret != Return::Continue {
+                //     break;
+                // }
+                // let opcode = unsafe { *self.instruction_pointer };
+                // // Safety: In analysis we are doing padding of bytecode so that we are sure that last.
+                // // byte instruction is STOP so we are safe to just increment program_counter bcs on last instruction
+                // // it will do noop and just stop execution of this contract
+                // self.instruction_pointer = unsafe { self.instruction_pointer.offset(1) };
+                // // execute opcode
+                // ret = jumptable[opcode as usize](self);
+
+                // ret = self.host.step_end(self, ret);
+            }
+        } else {
+            while ret == Return::Continue {
                 let opcode = unsafe { *self.instruction_pointer };
                 // Safety: In analysis we are doing padding of bytecode so that we are sure that last.
                 // byte instruction is STOP so we are safe to just increment program_counter bcs on last instruction
                 // it will do noop and just stop execution of this contract
                 self.instruction_pointer = unsafe { self.instruction_pointer.offset(1) };
                 // execute opcode
-                ret = jumptable[opcode as usize](self, host);
-
-                ret = host.step_end(self, ret);
-            }
-        } else {
-            let mut opcode;
-            loop {
-                opcode = unsafe { *self.instruction_pointer };
-                // Safety: In analysis we are doing padding of bytecode so that we are sure that last.
-                // byte instruction is STOP so we are safe to just increment program_counter bcs on last instruction
-                // it will do noop and just stop execution of this contract
-                self.instruction_pointer = unsafe { self.instruction_pointer.offset(1) };
-                // execute opcode
-                ret = jumptable[opcode as usize](self, host);
-                if ret !=  Return::Continue {
-                    return ret
-                }
+                ret = jumptable[opcode as usize](self);
             }
         }
         ret

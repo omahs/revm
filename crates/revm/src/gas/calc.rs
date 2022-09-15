@@ -1,5 +1,9 @@
 use super::constants::*;
-use crate::{models::SelfDestructResult, Spec, SpecId::{*, self}};
+use crate::{
+    models::SelfDestructResult,
+    Spec,
+    SpecId::{self, *},
+};
 use primitive_types::U256;
 
 #[allow(clippy::collapsible_else_if)]
@@ -231,7 +235,11 @@ pub fn selfdestruct_cost<const SPEC_ID: u8>(res: SelfDestructResult) -> u64 {
         0
     };
 
-    let selfdestruct_gas = if SpecId::TANGERINE.enabled_in(SPEC_ID) { 5000 } else { 0 }; //EIP-150: Gas cost changes for IO-heavy operations
+    let selfdestruct_gas = if SpecId::TANGERINE.enabled_in(SPEC_ID) {
+        5000
+    } else {
+        0
+    }; //EIP-150: Gas cost changes for IO-heavy operations
 
     let mut gas = selfdestruct_gas + selfdestruct_gas_topup;
     if SpecId::BERLIN.enabled_in(SPEC_ID) && res.is_cold {
@@ -287,7 +295,11 @@ fn xfer_cost(is_call_or_callcode: bool, transfers_value: bool) -> u64 {
     }
 }
 
-fn new_cost<const SPEC_ID: u8>(is_call_or_staticcall: bool, is_new: bool, transfers_value: bool) -> u64 {
+fn new_cost<const SPEC_ID: u8>(
+    is_call_or_staticcall: bool,
+    is_new: bool,
+    transfers_value: bool,
+) -> u64 {
     if is_call_or_staticcall {
         // EIP-161: State trie clearing (invariant-preserving alternative)
         if SpecId::SPURIOUS_DRAGON.enabled_in(SPEC_ID) {

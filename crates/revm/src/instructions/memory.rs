@@ -1,7 +1,7 @@
-use crate::{interpreter::Interpreter, Return, Host};
+use crate::{interpreter::Interpreter, Host, Return};
 use primitive_types::U256;
 
-pub fn mload(interpreter: &mut Interpreter, _host: &mut dyn Host) -> Return {
+pub fn mload(interpreter: &mut Interpreter) -> Return {
     // gas!(interpreter, gas::VERYLOW);
     pop!(interpreter, index);
     let index = as_usize_or_fail!(index, Return::OutOfGas);
@@ -13,7 +13,7 @@ pub fn mload(interpreter: &mut Interpreter, _host: &mut dyn Host) -> Return {
     Return::Continue
 }
 
-pub fn mstore(interpreter: &mut Interpreter, _host: &mut dyn Host) -> Return {
+pub fn mstore(interpreter: &mut Interpreter) -> Return {
     // gas!(interpreter, gas::VERYLOW);
     pop!(interpreter, index, value);
     let index = as_usize_or_fail!(index, Return::OutOfGas);
@@ -22,7 +22,7 @@ pub fn mstore(interpreter: &mut Interpreter, _host: &mut dyn Host) -> Return {
     Return::Continue
 }
 
-pub fn mstore8(interpreter: &mut Interpreter, _host: &mut dyn Host) -> Return {
+pub fn mstore8(interpreter: &mut Interpreter) -> Return {
     // gas!(interpreter, gas::VERYLOW);
     pop!(interpreter, index, value);
     let index = as_usize_or_fail!(index, Return::OutOfGas);
@@ -33,7 +33,7 @@ pub fn mstore8(interpreter: &mut Interpreter, _host: &mut dyn Host) -> Return {
     Return::Continue
 }
 
-pub fn msize(interpreter: &mut Interpreter, _host: &mut dyn Host) -> Return {
+pub fn msize(interpreter: &mut Interpreter) -> Return {
     // gas!(interpreter, gas::BASE);
     push!(interpreter, U256::from(interpreter.memory.effective_len()));
     Return::Continue

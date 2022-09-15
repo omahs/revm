@@ -7,17 +7,17 @@ use crate::SpecId;
 use crate::{SPEC_ID_FRONTIER, SPEC_ID_LATEST};
 use once_cell::sync::OnceCell;
 
-type InstructionFn = fn(&mut Interpreter, &mut dyn Host) -> Return;
+type InstructionFn = fn(&mut Interpreter) -> Return;
 
-pub fn return_stop(_: &mut Interpreter, _: &mut dyn Host) -> Return {
+pub fn return_stop(_: &mut Interpreter) -> Return {
     Return::Stop
 }
 
-pub fn invalid_opcode(_: &mut Interpreter, _: &mut dyn Host) -> Return {
+pub fn invalid_opcode(_: &mut Interpreter) -> Return {
     Return::InvalidOpcode
 }
 
-pub fn not_activated(_: &mut Interpreter, _: &mut dyn Host) -> Return {
+pub fn not_activated(_: &mut Interpreter) -> Return {
     Return::NotActivated
 }
 

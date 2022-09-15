@@ -1,5 +1,6 @@
-extern crate bindgen;
+//extern crate bindgen;
 
+use cc;
 use std::env;
 use std::path::PathBuf;
 
@@ -10,4 +11,4 @@ fn main() {
         .flag("-std=c++17")
         .include("cpp")
         .compile("intx");
-} 
+}

@@ -33,12 +33,15 @@ pub struct AnalysisData {
     /// This variable packs two informations:
     /// IS_JUMP (1bit) | gas block ( 31bits)
     is_jump_and_gas_block: u32,
+    // TODO Optimize this to be packed
+    stack_items_min_max: Option<(u32,u32)>,
 }
 
 impl AnalysisData {
     pub fn none() -> Self {
         AnalysisData {
             is_jump_and_gas_block: 0,
+            stack_items_min_max: None,
         }
     }
 
@@ -57,6 +60,10 @@ impl AnalysisData {
 
     pub fn gas_block(&self) -> u64 {
         (self.is_jump_and_gas_block & (!JUMP_MASK)) as u64
+    }
+
+    pub fn set_stack_min_max(&mut self, stack_limits: (u32,u32)) {
+        self.stack_items_min_max = Some(stack_limits)
     }
 }
 
