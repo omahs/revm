@@ -72,6 +72,8 @@ pub enum Return {
     CreateContractLimit,
     /// Error on created contract that begins with EF
     CreateContractWithEF,
+    /// Thrown if state change is attempted (through sstore, log, selfdestruct, or create) inside during static call. 
+    StateChangeDuringStaticCall,
 }
 
 pub const fn u256_one() -> U256 {
