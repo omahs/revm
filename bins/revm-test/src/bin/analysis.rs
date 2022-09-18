@@ -1,6 +1,7 @@
-use std::{str::FromStr, time::Instant};
+use std::{str::FromStr, time::{Instant, Duration}};
 
 use bytes::Bytes;
+use microbench::Options;
 use primitive_types::H160;
 use revm::{db::BenchmarkDB, Bytecode, TransactTo};
 
@@ -26,30 +27,33 @@ fn main() {
 
     evm.database(BenchmarkDB::new_bytecode(bytecode_raw));
 
-    // just to spead up processor.
-    for _ in 0..10000 {
-        let (_, _) = evm.transact();
-    }
+    let bench_options = Options::default().time(Duration::from_millis(1000));
 
-    let timer = Instant::now();
-    for _ in 0..30000 {
-        let (_, _) = evm.transact();
-    }
-    println!("Raw elapsed time: {:?}", timer.elapsed());
+    microbench::bench(
+        &bench_options,
+        "revm::raw_bytecode",
+        || {
+            let (_result, _) = evm.transact();
+        },
+    );
 
     evm.database(BenchmarkDB::new_bytecode(bytecode_checked));
 
-    let timer = Instant::now();
-    for _ in 0..30000 {
-        let (_, _) = evm.transact();
-    }
-    println!("Checked elapsed time: {:?}", timer.elapsed());
+    microbench::bench(
+        &bench_options,
+        "revm::checked_bytecode",
+        || {
+            let (_result, _) = evm.transact();
+        },
+    );
 
     evm.database(BenchmarkDB::new_bytecode(bytecode_analysed));
 
-    let timer = Instant::now();
-    for _ in 0..30000 {
-        let (_, _) = evm.transact();
-    }
-    println!("Analysed elapsed time: {:?}", timer.elapsed());
+    microbench::bench(
+        &bench_options,
+        "revm::analysed_bytecode",
+        || {
+            let (_result, _) = evm.transact();
+        },
+    );
 }

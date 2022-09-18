@@ -66,9 +66,9 @@ macro_rules! memory_resize {
 
 macro_rules! pop_address {
     ( $interp:expr, $x1:ident) => {
-        if $interp.stack.len() < 1 {
-            return Return::StackUnderflow;
-        }
+        // if $interp.stack.len() < 1 {
+        //     return Return::StackUnderflow;
+        // }
         let mut temp = H256::zero();
         // Safety: Length is checked above.
         let $x1: H160 = {
@@ -82,9 +82,9 @@ macro_rules! pop_address {
         };
     };
     ( $interp:expr, $x1:ident, $x2:ident) => {
-        if $interp.stack.len() < 2 {
-            return Return::StackUnderflow;
-        }
+        // if $interp.stack.len() < 2 {
+        //     return Return::StackUnderflow;
+        // }
         let mut temp = H256::zero();
         $x1: H160 = {
             // Safety: Length is checked above.
@@ -112,31 +112,31 @@ macro_rules! pop_address {
 
 macro_rules! pop {
     ( $interp:expr, $x1:ident) => {
-        if $interp.stack.len() < 1 {
-            return Return::StackUnderflow;
-        }
+        // if $interp.stack.len() < 1 {
+        //     return Return::StackUnderflow;
+        // }
         // Safety: Length is checked above.
         let $x1 = unsafe { $interp.stack.pop_unsafe() };
     };
     ( $interp:expr, $x1:ident, $x2:ident) => {
-        if $interp.stack.len() < 2 {
-            return Return::StackUnderflow;
-        }
+        // if $interp.stack.len() < 2 {
+        //     return Return::StackUnderflow;
+        // }
         // Safety: Length is checked above.
         let ($x1, $x2) = unsafe { $interp.stack.pop2_unsafe() };
     };
     ( $interp:expr, $x1:ident, $x2:ident, $x3:ident) => {
-        if $interp.stack.len() < 3 {
-            return Return::StackUnderflow;
-        }
+        // if $interp.stack.len() < 3 {
+        //     return Return::StackUnderflow;
+        // }
         // Safety: Length is checked above.
         let ($x1, $x2, $x3) = unsafe { $interp.stack.pop3_unsafe() };
     };
 
     ( $interp:expr, $x1:ident, $x2:ident, $x3:ident, $x4:ident) => {
-        if $interp.stack.len() < 4 {
-            return Return::StackUnderflow;
-        }
+        // if $interp.stack.len() < 4 {
+        //     return Return::StackUnderflow;
+        // }
         // Safety: Length is checked above.
         let ($x1, $x2, $x3, $x4) = unsafe { $interp.stack.pop4_unsafe() };
     };
@@ -144,23 +144,23 @@ macro_rules! pop {
 
 macro_rules! pop_top {
     ( $interp:expr, $x1:ident) => {
-        if $interp.stack.len() < 1 {
-            return Return::StackUnderflow;
-        }
+        // if $interp.stack.len() < 1 {
+        //     return Return::StackUnderflow;
+        // }
         // Safety: Length is checked above.
         let $x1 = unsafe { $interp.stack.top_unsafe() };
     };
     ( $interp:expr, $x1:ident, $x2:ident) => {
-        if $interp.stack.len() < 2 {
-            return Return::StackUnderflow;
-        }
+        // if $interp.stack.len() < 2 {
+        //     return Return::StackUnderflow;
+        // }
         // Safety: Length is checked above.
         let (mut $x1, $x2) = unsafe { $interp.stack.pop_top_unsafe() };
     };
     ( $interp:expr, $x1:ident, $x2:ident, $x3:ident) => {
-        if $interp.stack.len() < 3 {
-            return Return::StackUnderflow;
-        }
+        // if $interp.stack.len() < 3 {
+        //     return Return::StackUnderflow;
+        // }
         // Safety: Length is checked above.
         let (mut $x1, mut $x2, $x3) = unsafe { $interp.stack.pop2_top_unsafe() };
     };

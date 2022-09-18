@@ -1,9 +1,12 @@
-use super::contract::{AnalysisData, ValidJumpAddress};
+use super::{
+    contract::{AnalysisData, ValidJumpAddress},
+    stack,
+};
 use crate::{opcode, opcode_info_table, Spec, KECCAK_EMPTY};
 use bytes::Bytes;
 use primitive_types::H256;
 use sha3::{Digest, Keccak256};
-use std::sync::Arc;
+use std::{sync::Arc, cmp::{min, max}};
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 #[cfg_attr(feature = "with-serde", derive(serde::Serialize, serde::Deserialize))]
@@ -208,14 +211,20 @@ impl Bytecode {
         let mut index = 0;
         let mut gas_in_block: u32 = 0;
         let mut block_start: usize = 0;
-        let mut stack_min_items = 0;
-        let mut stack_max_items = 0;
+        let mut stack_items_min_required = 0;
+        let mut stack_items_max_added = 0;
+        let mut stack_items = 0;
 
         // first gas block
         while index < code.len() {
             let opcode = *code.get(index).unwrap();
             let info = opcode_gas.get(opcode as usize).unwrap();
             analysis.first_gas_block += info.get_gas();
+
+            stack_items -= info.stack_items_required();
+            stack_items_min_required = min(stack_items_min_required, stack_items);
+            stack_items += info.stack_items_added();
+            stack_items_max_added = max(stack_items_max_added, stack_items);
 
             index += if info.is_push() {
                 ((opcode - opcode::PUSH1) + 2) as usize

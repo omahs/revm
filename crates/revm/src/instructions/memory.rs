@@ -1,4 +1,4 @@
-use crate::{interpreter::Interpreter, Host, Return};
+use crate::{interpreter::Interpreter, Return};
 use primitive_types::U256;
 
 pub fn mload(interpreter: &mut Interpreter) -> Return {
@@ -6,9 +6,17 @@ pub fn mload(interpreter: &mut Interpreter) -> Return {
     pop!(interpreter, index);
     let index = as_usize_or_fail!(index, Return::OutOfGas);
     memory_resize!(interpreter, index, 32);
+
+    use byteorder::{BigEndian, ByteOrder};
+    let slice = interpreter.memory.get_slice(index, 32);
     push!(
         interpreter,
-        U256::from_big_endian(interpreter.memory.get_slice(index, 32))
+        U256([
+            BigEndian::read_u64(&slice[24..32]),
+            BigEndian::read_u64(&slice[16..24]),
+            BigEndian::read_u64(&slice[8..16]),
+            BigEndian::read_u64(&slice[0..8])
+        ]) //]BigEndian::read_u64interpreter.memory.get_slice(index, 32))
     );
     Return::Continue
 }
@@ -35,6 +43,6 @@ pub fn mstore8(interpreter: &mut Interpreter) -> Return {
 
 pub fn msize(interpreter: &mut Interpreter) -> Return {
     // gas!(interpreter, gas::BASE);
-    push!(interpreter, U256::from(interpreter.memory.effective_len()));
+    push!(interpreter, U256::from(interpreter.memory.len()));
     Return::Continue
 }

@@ -3,6 +3,7 @@ use core::{
     cmp::min,
     ops::{BitAnd, Not},
 };
+use byteorder::{BigEndian, ByteOrder};
 use primitive_types::U256;
 
 /// A sequencial memory. It uses Rust's `Vec` for internal
@@ -11,6 +12,8 @@ use primitive_types::U256;
 #[cfg_attr(feature = "with-serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct Memory {
     data: Vec<u8>,
+    len: usize,
+    resize_inc: usize,
 }
 
 impl Default for Memory {
@@ -19,21 +22,21 @@ impl Default for Memory {
     }
 }
 
+const MEMORY_PAGE_SIZE : usize = 4*1024;
+
 impl Memory {
     /// Create a new memory with the given limit.
     pub fn new() -> Self {
         Self {
-            data: Vec::with_capacity(4 * 1024), // took it from evmone
+            data: vec![0;MEMORY_PAGE_SIZE],
+            len: 0,
+            resize_inc: 1,
         }
-    }
-
-    pub fn effective_len(&self) -> usize {
-        self.data.len()
     }
 
     /// Get the length of the current memory range.
     pub fn len(&self) -> usize {
-        self.data.len()
+        self.len
     }
 
     /// Return true if current effective memory range is zero.
@@ -42,14 +45,18 @@ impl Memory {
     }
 
     /// Return the full memory.
-    pub fn data(&self) -> &Vec<u8> {
-        &self.data
+    pub fn data(&self) -> &[u8] {
+        &self.data[..self.len]
     }
 
     /// Resize the memory. asume that we already checked if
     /// we have enought gas to resize this vector and that we made new_size as multiply of 32
     pub fn resize(&mut self, new_size: usize) {
-        self.data.resize(new_size, 0);
+        if new_size > self.data.len() {
+            self.resize_inc *= 3;
+            self.data.resize(self.data.len()+self.resize_inc*MEMORY_PAGE_SIZE,0);
+        }
+        self.len = new_size;
     }
 
     /// Get memory region at given offset. Dont check offset and size
@@ -69,7 +76,12 @@ impl Memory {
 
     #[inline(always)]
     pub fn set_u256(&mut self, index: usize, value: U256) {
-        value.to_big_endian(&mut self.data[index..index + 32])
+        debug_assert!(self.data.len() < index+32);
+        let slice = &mut self.data[index..index + 32];
+        slice[0..8].copy_from_slice(&value.0[3].to_be_bytes());
+        slice[8..16].copy_from_slice(&value.0[2].to_be_bytes());
+        slice[16..24].copy_from_slice(&value.0[1].to_be_bytes());
+        slice[24..32].copy_from_slice(&value.0[0].to_be_bytes());
     }
 
     /// Set memory region at given offset. The offset and value are already checked

@@ -63,9 +63,9 @@ impl Stack {
 
     pub fn reduce_one(&mut self) -> Return {
         let len = self.data.len();
-        if len < 1 {
-            return Return::StackUnderflow;
-        }
+        // if len < 1 {
+        //     return Return::StackUnderflow;
+        // }
         unsafe {
             self.data.set_len(len - 1);
         }
@@ -182,9 +182,9 @@ impl Stack {
     /// Push a new value into the stack. If it will exceed the stack limit,
     /// returns `StackOverflow` error and leaves the stack unchanged.
     pub fn push_h256(&mut self, value: H256) -> Result<(), Return> {
-        if self.data.len() + 1 > STACK_LIMIT {
-            return Err(Return::StackOverflow);
-        }
+        // if self.data.len() + 1 > STACK_LIMIT {
+        //     return Err(Return::StackOverflow);
+        // }
         self.data.push(U256::from_big_endian(value.as_ref()));
         Ok(())
     }
@@ -193,9 +193,9 @@ impl Stack {
     /// Push a new value into the stack. If it will exceed the stack limit,
     /// returns `StackOverflow` error and leaves the stack unchanged.
     pub fn push(&mut self, value: U256) -> Result<(), Return> {
-        if self.data.len() + 1 > STACK_LIMIT {
-            return Err(Return::StackOverflow);
-        }
+        // if self.data.len() + 1 > STACK_LIMIT {
+        //     return Err(Return::StackOverflow);
+        // }
         self.data.push(value);
         Ok(())
     }
@@ -205,21 +205,21 @@ impl Stack {
     /// the stack is at index `0`. If the index is too large,
     /// `StackError::Underflow` is returned.
     pub fn peek(&self, no_from_top: usize) -> Result<U256, Return> {
-        if self.data.len() > no_from_top {
+        //if self.data.len() > no_from_top {
             Ok(self.data[self.data.len() - no_from_top - 1])
-        } else {
-            Err(Return::StackUnderflow)
-        }
+        //} else {
+        //    Err(Return::StackUnderflow)
+        //s}
     }
 
     #[inline(always)]
     pub fn dup<const N: usize>(&mut self) -> Return {
         let len = self.data.len();
-        if len < N {
-            Return::StackUnderflow
-        } else if len + 1 > STACK_LIMIT {
-            Return::StackOverflow
-        } else {
+        // if len < N {
+        //     Return::StackUnderflow
+        // } else if len + 1 > STACK_LIMIT {
+        //     Return::StackOverflow
+        // } else {
             // Safety: check for out of bounds is done above and it makes this safe to do.
             unsafe {
                 std::ptr::copy_nonoverlapping(
@@ -230,15 +230,15 @@ impl Stack {
                 self.data.set_len(len + 1);
             }
             Return::Continue
-        }
+        //}
     }
 
     #[inline(always)]
     pub fn swap<const N: usize>(&mut self) -> Return {
         let len = self.data.len();
-        if len <= N {
-            return Return::StackUnderflow;
-        }
+        // if len <= N {
+        //     return Return::StackUnderflow;
+        // }
         // Safety: length is checked before so we are okay to switch bytes in unsafe way.
         unsafe {
             let pa: *mut U256 = self.data.get_unchecked_mut(len - 1);
@@ -252,9 +252,9 @@ impl Stack {
     #[inline(always)]
     pub fn push_slice<const N: usize>(&mut self, slice: &[u8]) -> Return {
         let new_len = self.data.len() + 1;
-        if new_len > STACK_LIMIT {
-            return Return::StackOverflow;
-        }
+        // if new_len > STACK_LIMIT {
+        //     return Return::StackOverflow;
+        // }
 
         let slot;
         // Safety: check above ensures us that we are okey in increment len.
@@ -301,12 +301,12 @@ impl Stack {
     /// stack is at index `0`. If the index is too large,
     /// `StackError::Underflow` is returned.
     pub fn set(&mut self, no_from_top: usize, val: U256) -> Result<(), Return> {
-        if self.data.len() > no_from_top {
+        //if self.data.len() > no_from_top {
             let len = self.data.len();
             self.data[len - no_from_top - 1] = val;
             Ok(())
-        } else {
-            Err(Return::StackUnderflow)
-        }
+        //} else {
+        //    Err(Return::StackUnderflow)
+        //}
     }
 }

@@ -202,10 +202,11 @@ pub fn return_invalid_opcode(_: &mut Interpreter) -> Return {
 #[derive(Copy, Clone)]
 pub struct OpInfo {
     /// Data contains few information packed inside u32:
-    /// IS_JUMP (1bit) | IS_GAS_BLOCK_END (1bit) | IS_PUSH (1bit) | gas (29bits)
+    /// IS_JUMPDEST (1bit) | IS_GAS_BLOCK_END (1bit) | IS_PUSH (1bit) | gas (29bits)
     data: u32,
     stack_items_required: u8,
     stack_items_added: u8, // make is more compact. Later, it is not priority
+    is_stack_branch: bool,
 }
 
 /*
@@ -265,11 +266,20 @@ impl OpInfo {
         self.data & GAS_MASK
     }
 
+    pub fn stack_items_required(&self) -> u8 {
+        self.stack_items_required
+    }
+    
+    pub fn stack_items_added(&self) -> u8 {
+        self.stack_items_added
+    }
+
     pub fn none() -> Self {
         Self {
             data: 0,
             stack_items_required: 0,
             stack_items_added: 0,
+            is_stack_branch: false,
         }
     }
 
@@ -278,6 +288,7 @@ impl OpInfo {
             data: gas as u32 | GAS_BLOCK_END_MASK,
             stack_items_required,
             stack_items_added,
+            is_stack_branch: false,
         }
     }
 
@@ -286,6 +297,7 @@ impl OpInfo {
             data: 0,
             stack_items_required,
             stack_items_added,
+            is_stack_branch: false,
         }
     }
 
@@ -294,6 +306,7 @@ impl OpInfo {
             data: gas as u32,
             stack_items_required,
             stack_items_added,
+            is_stack_branch: false,
         }
     }
 
@@ -302,14 +315,22 @@ impl OpInfo {
             data: gas::VERYLOW as u32 | IS_PUSH_MASK,
             stack_items_required: 0,
             stack_items_added: 1,
+            is_stack_branch: false,
         }
     }
+
+    // pub fn jump() -> Self {
+    //     Self {
+
+    //     }
+    // }
 
     pub fn jumpdest() -> Self {
         Self {
             data: gas::JUMPDEST as u32 | JUMP_MASK | GAS_BLOCK_END_MASK,
             stack_items_required: 0,
             stack_items_added: 0,
+            is_stack_branch: true,
         }
     }
 }

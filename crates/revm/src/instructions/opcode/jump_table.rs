@@ -1,5 +1,5 @@
 use crate::instructions::{arithmetic, bitwise, control, host, host_env, memory, stack, system};
-use crate::Host;
+
 use crate::Interpreter;
 use crate::Return;
 use crate::Spec;

@@ -1,8 +1,9 @@
-use std::{str::FromStr, time::Instant};
+use std::{str::FromStr, time::{Instant, Duration}};
 
 use bytes::Bytes;
 use primitive_types::H160;
 use revm::{db::BenchmarkDB, Bytecode, Database, LatestSpec, TransactTo, EVM};
+use microbench::{self, Options};
 
 extern crate alloc;
 
@@ -21,29 +22,18 @@ pub fn simple_example() {
         TransactTo::Call(H160::from_str("0x0000000000000000000000000000000000000000").unwrap());
     evm.env.tx.data = Bytes::from(hex::decode("30627b7c").unwrap());
 
-    let mut elapsed = std::time::Duration::ZERO;
-    let mut times = Vec::new();
-    for _ in 0..40 {
-        let timer = Instant::now();
-        let (_, _) = evm.transact();
-        let i = timer.elapsed();
-        times.push(i);
-        elapsed += i;
-    }
-    main_run(evm);
-    println!("elapsed: {:?}", elapsed / 40);
-    let mut times = times[10..].to_vec();
-    times.sort();
-    for (i, time) in times.iter().rev().enumerate() {
-        println!("{}: {:?}", i, time);
-    }
-}
 
-pub fn main_run<T: Database>(mut evm: EVM<T>) {
-    // let timer = Instant::now();
-    // let (_, _) = evm.transact();
-    // let i = timer.elapsed();
-    // println!("LAST:{:?}", i);
+    let bench_options = Options::default().time(Duration::from_millis(1000));
+
+    for _ in 0..20 {
+    microbench::bench(
+        &bench_options,
+        "revm::snailtracer",
+        || {
+            let (_result, _) = evm.transact();
+        },
+    );
+}
 }
 
 fn main() {
